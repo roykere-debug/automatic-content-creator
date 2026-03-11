@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.env
+.env.local
+.env.*.local
+*.log
+.DS_Store
+.vite/
+packages/saas-app/node_modules/
+packages/saas-app/dist/
+packages/core/dist/

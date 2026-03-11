@@ -1,0 +1,127 @@
+/**
+ * AutoPilot Content — Generalized Theme
+ * CSS variables are injected dynamically from workspace_settings.theme_colors
+ * via ThemeContext.tsx. The defaults here are neutral/professional (not military).
+ */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Brand colors — overridden by ThemeContext from workspace_settings */
+    --brand-primary: #3b82f6;
+    --brand-primary-glow: rgba(59, 130, 246, 0.2);
+    --brand-accent: #10b981;
+    --brand-accent-glow: rgba(16, 185, 129, 0.2);
+    --brand-background: #0f172a;
+    --brand-surface: #1e293b;
+    --brand-foreground: #e2e8f0;
+    --brand-card-bg: #1e293b;
+
+    /* Shadcn/ui tokens — using brand vars */
+    --background: var(--brand-background);
+    --foreground: var(--brand-foreground);
+    --card: var(--brand-card-bg);
+    --card-foreground: var(--brand-foreground);
+    --popover: var(--brand-card-bg);
+    --popover-foreground: var(--brand-foreground);
+    --primary: var(--brand-primary);
+    --primary-foreground: #ffffff;
+    --secondary: var(--brand-surface);
+    --secondary-foreground: var(--brand-foreground);
+    --muted: var(--brand-surface);
+    --muted-foreground: #94a3b8;
+    --accent: var(--brand-accent);
+    --accent-foreground: #ffffff;
+    --border: rgba(255, 255, 255, 0.08);
+    --input: rgba(255, 255, 255, 0.08);
+    --ring: var(--brand-primary);
+    --radius: 0.5rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+    box-sizing: border-box;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+/* ============================================================
+   Brand Glow Utilities
+   Uses CSS variables for brand-agnostic glow effects.
+   ============================================================ */
+
+.glow-primary {
+  box-shadow: 0 0 10px var(--brand-primary-glow), 0 0 20px var(--brand-primary-glow);
+}
+
+.glow-accent {
+  box-shadow: 0 0 10px var(--brand-accent-glow), 0 0 20px var(--brand-accent-glow);
+}
+
+.border-brand {
+  border-color: var(--brand-primary);
+}
+
+.text-brand {
+  color: var(--brand-primary);
+}
+
+.bg-brand {
+  background-color: var(--brand-primary);
+}
+
+/* Card with brand border on hover */
+.card-brand {
+  @apply rounded-lg border border-border bg-card transition-all duration-200;
+}
+
+.card-brand:hover {
+  border-color: color-mix(in srgb, var(--brand-primary) 40%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--brand-primary) 20%, transparent);
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--brand-background);
+}
+
+::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--brand-primary) 50%, transparent);
+  border-radius: 2px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--brand-primary);
+}
+
+/* RTL support */
+[dir="rtl"] {
+  direction: rtl;
+  text-align: right;
+}
+
+/* Loading skeleton */
+@keyframes skeleton-shimmer {
+  0% { opacity: 0.6; }
+  50% { opacity: 1; }
+  100% { opacity: 0.6; }
+}
+
+.skeleton {
+  @apply rounded bg-muted;
+  animation: skeleton-shimmer 1.5s ease-in-out infinite;
+}

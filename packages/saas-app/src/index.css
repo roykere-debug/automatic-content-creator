@@ -1,0 +1,207 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 222 47% 5%;
+    --foreground: 210 40% 96%;
+
+    --card: 222 47% 8%;
+    --card-foreground: 210 40% 96%;
+
+    --popover: 222 47% 8%;
+    --popover-foreground: 210 40% 96%;
+
+    /* Default brand primary — overridden at runtime by ThemeContext from workspace_settings */
+    --primary: 217 91% 60%;
+    --primary-foreground: 222 47% 5%;
+
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 210 40% 96%;
+
+    --muted: 217 33% 12%;
+    --muted-foreground: 215 20% 55%;
+
+    --accent: 160 84% 39%;
+    --accent-foreground: 222 47% 5%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217 33% 17%;
+    --input: 217 33% 17%;
+    --ring: 217 91% 60%;
+
+    --radius: 0.5rem;
+
+    --surface-elevated: 222 47% 10%;
+    --surface-hover: 222 47% 12%;
+    --warning-amber: 38 92% 50%;
+    --status-active: 160 84% 39%;
+    --status-pending: 38 92% 50%;
+    --status-sent: 217 91% 60%;
+    --grid-line: 217 33% 15%;
+
+    --sidebar-background: 222 47% 6%;
+    --sidebar-foreground: 210 40% 96%;
+    --sidebar-primary: 217 91% 60%;
+    --sidebar-primary-foreground: 222 47% 5%;
+    --sidebar-accent: 217 33% 12%;
+    --sidebar-accent-foreground: 210 40% 96%;
+    --sidebar-border: 217 33% 17%;
+    --sidebar-ring: 217 91% 60%;
+
+    /* Brand tokens — set by ThemeContext.tsx from workspace_settings.theme_colors */
+    --brand-primary: #3b82f6;
+    --brand-primary-glow: rgba(59, 130, 246, 0.2);
+    --brand-accent: #10b981;
+    --brand-accent-glow: rgba(16, 185, 129, 0.2);
+    --brand-background: #0f172a;
+    --brand-surface: #1e293b;
+    --brand-foreground: #e2e8f0;
+    --brand-card-bg: #1e293b;
+  }
+
+  .dark {
+    --background: 222 47% 5%;
+    --foreground: 210 40% 96%;
+    --card: 222 47% 8%;
+    --card-foreground: 210 40% 96%;
+    --popover: 222 47% 8%;
+    --popover-foreground: 210 40% 96%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 222 47% 5%;
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 210 40% 96%;
+    --muted: 217 33% 12%;
+    --muted-foreground: 215 20% 55%;
+    --accent: 160 84% 39%;
+    --accent-foreground: 222 47% 5%;
+    --destructive: 0 62% 30%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217 33% 17%;
+    --input: 217 33% 17%;
+    --ring: 217 91% 60%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: hsl(var(--background));
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground));
+  }
+}
+
+@layer components {
+  /* Brand glow — uses workspace-injected CSS variables */
+  .glow-primary {
+    box-shadow: 0 0 20px var(--brand-primary-glow),
+                0 0 40px var(--brand-primary-glow);
+  }
+
+  .glow-accent {
+    box-shadow: 0 0 20px var(--brand-accent-glow),
+                0 0 40px var(--brand-accent-glow);
+  }
+
+  /* Keep legacy class names for compatibility with copied components */
+  .glow-green { @apply glow-primary; }
+  .card-tactical { @apply card-brand; }
+
+  /* Grid background pattern */
+  .grid-pattern {
+    background-image:
+      linear-gradient(hsl(var(--grid-line)) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(var(--grid-line)) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+
+  .font-mono-data {
+    font-family: 'JetBrains Mono', monospace;
+    font-feature-settings: 'tnum' 1;
+  }
+
+  .pulse-green {
+    animation: pulse-brand 2s infinite;
+  }
+
+  @keyframes pulse-brand {
+    0%, 100% {
+      box-shadow: 0 0 0 0 var(--brand-primary-glow);
+    }
+    50% {
+      box-shadow: 0 0 0 8px transparent;
+    }
+  }
+
+  .scan-line {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .scan-line::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--brand-primary), transparent);
+    animation: scan 3s infinite;
+  }
+
+  @keyframes scan {
+    0% { left: -100%; }
+    100% { left: 100%; }
+  }
+
+  .card-brand {
+    @apply bg-card border border-border transition-all duration-200;
+  }
+
+  .card-brand:hover {
+    @apply border-primary/50;
+    box-shadow: 0 0 30px var(--brand-primary-glow);
+  }
+
+  .rtl-text {
+    direction: rtl;
+    text-align: right;
+  }
+}
+
+@layer utilities {
+  .text-tactical { @apply text-primary; }
+
+  .bg-surface {
+    background-color: hsl(var(--surface-elevated));
+  }
+
+  .bg-surface-hover {
+    background-color: hsl(var(--surface-hover));
+  }
+}

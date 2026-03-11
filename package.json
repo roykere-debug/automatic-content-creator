@@ -1,0 +1,14 @@
+{
+  "name": "autopilot-content",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "packages/core",
+    "packages/saas-app"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace=packages/saas-app",
+    "build": "npm run build --workspace=packages/core && npm run build --workspace=packages/saas-app",
+    "lint": "npm run lint --workspace=packages/saas-app"
+  }
+}

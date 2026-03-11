@@ -1,0 +1,39 @@
+import * as React from "react";
+import { cva, type VariantProps } from "class-variance-authority";
+
+import { cn } from "@/lib/utils";
+
+const badgeVariants = cva(
+  "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+  {
+    variants: {
+      variant: {
+        default: "border-transparent bg-primary text-primary-foreground hover:bg-primary/80",
+        secondary: "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
+        destructive: "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80",
+        outline: "text-foreground",
+        tactical:
+          "border-primary/30 bg-primary/10 text-primary font-mono text-[10px] uppercase tracking-wider",
+        amber:
+          "border-accent/30 bg-accent/10 text-accent font-mono text-[10px] uppercase tracking-wider",
+        newLead:
+          "border-[hsl(var(--status-active))]/30 bg-[hsl(var(--status-active))]/10 text-[hsl(var(--status-active))] font-mono text-[10px] uppercase tracking-wider",
+        draftReady:
+          "border-[hsl(var(--status-pending))]/30 bg-[hsl(var(--status-pending))]/10 text-[hsl(var(--status-pending))] font-mono text-[10px] uppercase tracking-wider",
+        sentToWp:
+          "border-[hsl(var(--status-sent))]/30 bg-[hsl(var(--status-sent))]/10 text-[hsl(var(--status-sent))] font-mono text-[10px] uppercase tracking-wider",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+    },
+  },
+);
+
+export interface BadgeProps extends React.HTMLAttributes<HTMLDivElement>, VariantProps<typeof badgeVariants> {}
+
+function Badge({ className, variant, ...props }: BadgeProps) {
+  return <div className={cn(badgeVariants({ variant }), className)} {...props} />;
+}
+
+export { Badge, badgeVariants };
