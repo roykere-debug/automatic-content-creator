@@ -80,11 +80,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signIn = async (email: string, password: string) => {
+    // Mark as loading so ProtectedRoute shows a spinner while the auth
+    // state change propagates — prevents the race-condition redirect to /auth.
+    setIsLoading(true);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) setIsLoading(false);
     return { error: error as Error | null };
   };
 
   const signUp = async (email: string, password: string) => {
+    setIsLoading(true);
     const { error } = await supabase.auth.signUp({
       email,
       password,
@@ -92,6 +97,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         emailRedirectTo: window.location.origin,
       },
     });
+    if (error) setIsLoading(false);
     return { error: error as Error | null };
   };
 

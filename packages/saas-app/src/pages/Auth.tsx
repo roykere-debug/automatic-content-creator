@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -12,9 +12,14 @@ export default function Auth() {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [mode, setMode] = useState<Mode>("signin");
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, user } = useAuth();
   const { config } = useWorkspace();
   const navigate = useNavigate();
+
+  // Redirect already-authenticated users away from the login page.
+  useEffect(() => {
+    if (user) navigate("/", { replace: true });
+  }, [user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -87,6 +87,9 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 
     try {
       setError(null);
+      // Reset loading so ProtectedRoute shows a spinner while workspace data
+      // is fetched after sign-in (avoids stale wsLoading=false from previous run).
+      setIsLoading(true);
 
       // Explicitly get the session token and pass it in the request header.
       // Relying on functions.invoke to auto-attach the token causes a race
@@ -123,9 +126,9 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       }
 
       if (!data?.workspaceId) {
-        const errorMsg = "No workspace found. Please contact support.";
-        console.warn(errorMsg);
-        setError(errorMsg);
+        // No workspace exists yet — leave workspaceId as null so
+        // ProtectedRoute redirects to /onboarding to set one up.
+        setWorkspaceId(null);
         setIsLoading(false);
         return;
       }
@@ -174,7 +177,8 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     fetchWorkspaceConfig();
   }, [fetchWorkspaceConfig]);
 
-  const isOnboardingNeeded = workspaceId !== null && config.scan_keywords.length === 0;
+  // Onboarding needed if: no workspace exists yet, OR workspace has no scan keywords configured
+  const isOnboardingNeeded = user !== null && !isLoading && (workspaceId === null || config.scan_keywords.length === 0);
 
   return (
     <WorkspaceContext.Provider
