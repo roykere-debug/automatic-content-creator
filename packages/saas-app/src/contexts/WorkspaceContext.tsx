@@ -104,12 +104,17 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       });
 
       if (fnError) {
-        // Log full error detail so we can diagnose in browser console
         console.error("get-workspace-id error:", JSON.stringify(fnError), fnError);
-        const detail = (fnError as { context?: { status?: number } }).context?.status
-          ? ` (HTTP ${(fnError as { context?: { status?: number } }).context?.status})`
-          : "";
-        const errorMsg = `Failed to load workspace: ${fnError.message || "Unknown error"}${detail}`;
+        const status = (fnError as { context?: { status?: number } }).context?.status;
+        // 401 = stale session from a different Supabase project in localStorage
+        // Sign out to clear bad tokens and let the user log in fresh
+        if (status === 401) {
+          console.warn("Stale session detected — signing out to clear tokens.");
+          await supabase.auth.signOut();
+          setIsLoading(false);
+          return;
+        }
+        const errorMsg = `Failed to load workspace: ${fnError.message || "Unknown error"} (HTTP ${status ?? "?"})`;
         setError(errorMsg);
         setIsLoading(false);
         return;
