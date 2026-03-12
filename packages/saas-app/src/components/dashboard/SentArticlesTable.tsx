@@ -1,15 +1,5 @@
 import { useState, useEffect } from "react";
 import { ExternalLink, Globe, Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 
@@ -21,7 +11,6 @@ export interface SentArticle {
   email_sent_to: string | null;
   sent_at: string;
   image_url: string | null;
-  // These will be populated from translation (if available)
   hebrew_title?: string;
   english_title?: string;
 }
@@ -37,113 +26,224 @@ export function SentArticlesTable({ onArticleClick, refreshTrigger }: SentArticl
 
   const fetchArticles = async () => {
     setIsLoading(true);
-    const { data, error } = await supabase.functions.invoke('manage-articles', {
-      body: { action: 'list', limit: 50 }
+    const { data, error } = await supabase.functions.invoke("manage-articles", {
+      body: { action: "list", limit: 50 },
     });
-
-    if (error || !data?.success) {
-      console.error("Error fetching articles:", error || data?.error);
-    } else {
-      setArticles(data.data || []);
-    }
+    if (error || !data?.success) console.error("Error fetching articles:", error || data?.error);
+    else setArticles(data.data || []);
     setIsLoading(false);
   };
 
-  useEffect(() => {
-    fetchArticles();
-  }, [refreshTrigger]);
+  useEffect(() => { fetchArticles(); }, [refreshTrigger]);
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "48px 0",
+          backgroundColor: "rgb(var(--c-surface))",
+          border: "1px solid rgb(var(--c-border))",
+          borderRadius: "var(--radius)",
+        }}
+      >
+        <Loader2
+          size={20}
+          style={{ color: "rgb(var(--c-primary))", animation: "spin 1s linear infinite" }}
+        />
       </div>
     );
   }
 
   if (articles.length === 0) {
     return (
-      <div className="text-center py-12 text-muted-foreground">
-        <Globe className="h-12 w-12 mx-auto mb-4 opacity-50" />
-        <p className="font-mono">אין כתבות שנשלחו עדיין</p>
-        <p className="text-sm mt-1">לחץ על "GENERATE & SEND" לשליחת כתבה ראשונה</p>
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "64px 0",
+          backgroundColor: "rgb(var(--c-surface))",
+          border: "1px solid rgb(var(--c-border))",
+          borderRadius: "var(--radius)",
+          gap: 10,
+        }}
+      >
+        <Globe size={32} style={{ color: "rgb(var(--c-fg-muted))", opacity: 0.4 }} />
+        <p style={{ fontSize: 13, color: "rgb(var(--c-fg-muted))" }}>No articles sent yet</p>
+        <p style={{ fontSize: 11, color: "rgb(var(--c-fg-subtle))" }}>
+          Click "Send Article" to send the first one
+        </p>
       </div>
     );
   }
 
+  const colStyle = (extra?: React.CSSProperties): React.CSSProperties => ({
+    padding: "10px 14px",
+    fontSize: 12,
+    color: "rgb(var(--c-fg-muted))",
+    fontWeight: 600,
+    letterSpacing: "0.06em",
+    textTransform: "uppercase",
+    borderBottom: "1px solid rgb(var(--c-border))",
+    whiteSpace: "nowrap",
+    ...extra,
+  });
+
+  const cellStyle = (extra?: React.CSSProperties): React.CSSProperties => ({
+    padding: "10px 14px",
+    borderBottom: "1px solid rgb(var(--c-border-soft))",
+    ...extra,
+  });
+
   return (
-    <div className="rounded-lg border border-border overflow-hidden overflow-x-auto">
-      <Table>
-        <TableHeader>
-          <TableRow className="bg-surface hover:bg-surface">
-            <TableHead className="font-mono text-xs uppercase tracking-wider w-16">תמונה</TableHead>
-            <TableHead className="font-mono text-xs uppercase tracking-wider min-w-[200px]">כותרת</TableHead>
-            <TableHead className="font-mono text-xs uppercase tracking-wider w-32 hidden sm:table-cell">מילת חיפוש</TableHead>
-            <TableHead className="font-mono text-xs uppercase tracking-wider w-28 hidden md:table-cell">נשלח ב</TableHead>
-            <TableHead className="font-mono text-xs uppercase tracking-wider w-16 text-center">פעולות</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {articles.map((article) => (
-            <TableRow 
-              key={article.id} 
-              className="cursor-pointer hover:bg-surface/50 transition-colors"
-              onClick={() => onArticleClick(article)}
-            >
-              <TableCell className="p-2">
-                {article.image_url ? (
-                  <a 
-                    href={article.image_url} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    onClick={(e) => e.stopPropagation()}
-                    title="פתח תמונה ב-Unsplash"
+    <div
+      style={{
+        backgroundColor: "rgb(var(--c-surface))",
+        border: "1px solid rgb(var(--c-border))",
+        borderRadius: "var(--radius)",
+        overflow: "hidden",
+      }}
+    >
+      <div style={{ overflowX: "auto" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <thead>
+            <tr style={{ backgroundColor: "rgb(var(--c-surface-2))" }}>
+              <th style={colStyle({ width: 52 })}>Img</th>
+              <th style={colStyle()}>Title</th>
+              <th style={colStyle({ width: 140 })}>Keyword</th>
+              <th style={colStyle({ width: 120 })}>Sent</th>
+              <th style={colStyle({ width: 48, textAlign: "center" })}>—</th>
+            </tr>
+          </thead>
+          <tbody>
+            {articles.map((article, i) => (
+              <tr
+                key={article.id}
+                style={{ cursor: "pointer", transition: "background-color 100ms ease" }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLTableRowElement).style.backgroundColor =
+                    "rgb(var(--c-surface-2))";
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLTableRowElement).style.backgroundColor = "transparent";
+                }}
+                onClick={() => onArticleClick(article)}
+              >
+                {/* Thumbnail */}
+                <td style={cellStyle({ padding: "8px 14px" })}>
+                  {article.image_url ? (
+                    <a
+                      href={article.image_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <img
+                        src={article.image_url}
+                        alt=""
+                        style={{
+                          width: 40,
+                          height: 28,
+                          objectFit: "cover",
+                          borderRadius: 4,
+                          border: "1px solid rgb(var(--c-border))",
+                          display: "block",
+                        }}
+                      />
+                    </a>
+                  ) : (
+                    <div
+                      style={{
+                        width: 40,
+                        height: 28,
+                        borderRadius: 4,
+                        backgroundColor: "rgb(var(--c-surface-2))",
+                        border: "1px solid rgb(var(--c-border))",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <Globe size={12} style={{ color: "rgb(var(--c-fg-muted))" }} />
+                    </div>
+                  )}
+                </td>
+
+                {/* Title */}
+                <td style={cellStyle()}>
+                  <p
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 500,
+                      color: "rgb(var(--c-fg))",
+                      lineHeight: 1.4,
+                      overflow: "hidden",
+                      display: "-webkit-box",
+                      WebkitLineClamp: 1,
+                      WebkitBoxOrient: "vertical",
+                      marginBottom: 2,
+                    }}
                   >
-                    <img 
-                      src={article.image_url} 
-                      alt="" 
-                      className="w-12 h-8 md:w-14 md:h-10 object-cover rounded border border-border hover:border-primary transition-colors"
-                    />
-                  </a>
-                ) : (
-                  <div className="w-12 h-8 md:w-14 md:h-10 bg-muted rounded border border-border flex items-center justify-center">
-                    <Globe className="h-4 w-4 text-muted-foreground" />
-                  </div>
-                )}
-              </TableCell>
-              <TableCell>
-                <div className="space-y-1">
-                  <p className="font-medium text-xs md:text-sm line-clamp-2 md:line-clamp-1">{article.article_title}</p>
-                  <p className="text-[10px] md:text-xs text-muted-foreground line-clamp-1">
-                    {new URL(article.article_url).hostname}
+                    {article.article_title}
                   </p>
-                </div>
-              </TableCell>
-              <TableCell className="hidden sm:table-cell">
-                <Badge variant="outline" className="text-[10px] md:text-xs font-mono">
-                  {article.keyword_used ? (article.keyword_used.length > 15 ? article.keyword_used.substring(0, 15) + '...' : article.keyword_used) : '-'}
-                </Badge>
-              </TableCell>
-              <TableCell className="font-mono text-[10px] md:text-xs text-muted-foreground hidden md:table-cell">
-                {format(new Date(article.sent_at), 'dd/MM/yy HH:mm')}
-              </TableCell>
-              <TableCell className="text-center p-1 md:p-4">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    window.open(article.article_url, '_blank');
-                  }}
-                >
-                  <ExternalLink className="h-4 w-4" />
-                </Button>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+                  <p style={{ fontSize: 11, color: "rgb(var(--c-fg-muted))" }}>
+                    {(() => { try { return new URL(article.article_url).hostname; } catch { return ""; } })()}
+                  </p>
+                </td>
+
+                {/* Keyword */}
+                <td style={cellStyle()}>
+                  {article.keyword_used ? (
+                    <span className="pill pill-muted" style={{ fontSize: 10, maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {article.keyword_used.length > 18
+                        ? article.keyword_used.substring(0, 18) + "…"
+                        : article.keyword_used}
+                    </span>
+                  ) : (
+                    <span style={{ color: "rgb(var(--c-fg-subtle))", fontSize: 12 }}>—</span>
+                  )}
+                </td>
+
+                {/* Date */}
+                <td style={cellStyle()}>
+                  <span
+                    className="data-value"
+                    style={{ fontSize: 11, color: "rgb(var(--c-fg-muted))" }}
+                  >
+                    {format(new Date(article.sent_at), "dd/MM/yy HH:mm")}
+                  </span>
+                </td>
+
+                {/* Action */}
+                <td style={cellStyle({ textAlign: "center" })}>
+                  <button
+                    style={{
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      color: "rgb(var(--c-fg-muted))",
+                      padding: "4px",
+                      borderRadius: 4,
+                      display: "inline-flex",
+                      alignItems: "center",
+                      transition: "color 150ms ease",
+                    }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "rgb(var(--c-fg))"; }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "rgb(var(--c-fg-muted))"; }}
+                    onClick={(e) => { e.stopPropagation(); window.open(article.article_url, "_blank"); }}
+                  >
+                    <ExternalLink size={13} />
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

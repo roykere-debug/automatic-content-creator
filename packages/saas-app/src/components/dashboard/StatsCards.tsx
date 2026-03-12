@@ -14,24 +14,16 @@ interface StatsCardsProps {
 }
 
 export function StatsCards({ refreshTrigger }: StatsCardsProps) {
-  const [stats, setStats] = useState<Stats>({
-    newLeads: 0,
-    draftsReady: 0,
-    sentToWp: 0,
-    flaggedForReview: 0,
-  });
+  const [stats, setStats] = useState<Stats>({ newLeads: 0, draftsReady: 0, sentToWp: 0, flaggedForReview: 0 });
 
   useEffect(() => {
     const fetchStats = async () => {
-      const { data } = await supabase
-        .from("article_drafts")
-        .select("status");
-
+      const { data } = await supabase.from("article_drafts").select("status");
       if (data) {
         const counts = data.reduce(
           (acc, row) => {
             if (row.status === "draft") acc.draftsReady++;
-            else if (row.status === "sent_to_wp" || row.status === "published_hebrew" || row.status === "published_english") acc.sentToWp++;
+            else if (["sent_to_wp", "published_hebrew", "published_english"].includes(row.status)) acc.sentToWp++;
             else if (row.status === "flagged") acc.flaggedForReview++;
             else acc.newLeads++;
             return acc;
@@ -41,7 +33,6 @@ export function StatsCards({ refreshTrigger }: StatsCardsProps) {
         setStats(counts);
       }
     };
-
     fetchStats();
   }, [refreshTrigger]);
 
@@ -50,56 +41,110 @@ export function StatsCards({ refreshTrigger }: StatsCardsProps) {
       label: "New Leads",
       value: stats.newLeads,
       icon: FileText,
-      color: "text-status-active",
-      bgColor: "bg-status-active/10",
-      borderColor: "border-status-active/30",
+      accent: "rgb(var(--c-primary))",
+      accentBg: "rgb(var(--c-primary-dim))",
     },
     {
       label: "Drafts Ready",
       value: stats.draftsReady,
       icon: CheckCircle,
-      color: "text-status-pending",
-      bgColor: "bg-status-pending/10",
-      borderColor: "border-status-pending/30",
+      accent: "rgb(var(--c-amber))",
+      accentBg: "rgba(255,175,0,0.1)",
     },
     {
       label: "Sent to WP",
       value: stats.sentToWp,
       icon: Send,
-      color: "text-status-sent",
-      bgColor: "bg-status-sent/10",
-      borderColor: "border-status-sent/30",
+      accent: "rgb(var(--c-green))",
+      accentBg: "rgba(52,199,89,0.1)",
     },
     {
       label: "Needs Review",
       value: stats.flaggedForReview,
       icon: AlertTriangle,
-      color: "text-destructive",
-      bgColor: "bg-destructive/10",
-      borderColor: "border-destructive/30",
+      accent: "rgb(var(--c-red))",
+      accentBg: "rgba(255,69,58,0.1)",
     },
   ];
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-      {cards.map((card) => (
-        <div
-          key={card.label}
-          className={`rounded-lg border ${card.borderColor} ${card.bgColor} p-4 transition-all hover:scale-[1.02]`}
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex flex-col gap-1">
-              <span className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(4, 1fr)",
+        gap: 12,
+      }}
+    >
+      {cards.map((card) => {
+        const Icon = card.icon;
+        return (
+          <div
+            key={card.label}
+            style={{
+              backgroundColor: "rgb(var(--c-surface))",
+              border: "1px solid rgb(var(--c-border))",
+              borderRadius: "var(--radius)",
+              padding: "16px 18px",
+              transition: "border-color 150ms ease",
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLDivElement).style.borderColor = "rgb(var(--c-surface-3))";
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLDivElement).style.borderColor = "rgb(var(--c-border))";
+            }}
+          >
+            {/* Top row: icon badge + label */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: 12,
+              }}
+            >
+              <span
+                style={{
+                  fontSize: 10,
+                  fontWeight: 600,
+                  letterSpacing: "0.07em",
+                  textTransform: "uppercase",
+                  color: "rgb(var(--c-fg-muted))",
+                }}
+              >
                 {card.label}
               </span>
-              <span className={`font-mono text-3xl font-bold ${card.color}`}>
-                {card.value}
-              </span>
+              <div
+                style={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: 6,
+                  backgroundColor: card.accentBg,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Icon size={13} style={{ color: card.accent }} />
+              </div>
             </div>
-            <card.icon className={`h-8 w-8 ${card.color} opacity-50`} />
+
+            {/* Value */}
+            <div
+              className="data-value"
+              style={{
+                fontSize: 28,
+                fontWeight: 600,
+                lineHeight: 1,
+                letterSpacing: "-0.03em",
+                color: "rgb(var(--c-fg))",
+              }}
+            >
+              {card.value}
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

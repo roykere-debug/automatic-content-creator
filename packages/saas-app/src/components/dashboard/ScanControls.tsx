@@ -1,7 +1,4 @@
-import { Radar, Pause, RefreshCw } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { useState } from "react";
+import { Radar, Pause, RefreshCw, Clock } from "lucide-react";
 
 interface ScanControlsProps {
   onLaunchScan: () => void;
@@ -11,49 +8,122 @@ interface ScanControlsProps {
 
 export function ScanControls({ onLaunchScan, isScanning, lastScan }: ScanControlsProps) {
   return (
-    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6 rounded-lg border border-border bg-card p-3 sm:p-4 flex-1">
-      {/* Scan Button */}
-      <Button
-        variant={isScanning ? "tacticalAmber" : "tactical"}
-        size="xl"
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 16,
+        backgroundColor: "rgb(var(--c-surface))",
+        border: "1px solid rgb(var(--c-border))",
+        borderRadius: "var(--radius)",
+        padding: "14px 18px",
+      }}
+    >
+      {/* Scan button */}
+      <button
         onClick={onLaunchScan}
         disabled={isScanning}
-        className="min-w-[140px] sm:min-w-[180px] text-sm sm:text-base"
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 8,
+          padding: "9px 18px",
+          borderRadius: "calc(var(--radius) - 2px)",
+          fontSize: 13,
+          fontWeight: 600,
+          letterSpacing: "0.03em",
+          cursor: isScanning ? "not-allowed" : "pointer",
+          border: "none",
+          backgroundColor: isScanning ? "rgba(255,175,0,0.12)" : "rgb(var(--c-primary))",
+          color: isScanning ? "rgb(var(--c-amber))" : "#fff",
+          opacity: isScanning ? 0.8 : 1,
+          transition: "all 150ms ease",
+          minWidth: 148,
+          fontFamily: "'JetBrains Mono', monospace",
+        }}
       >
         {isScanning ? (
           <>
-            <Pause className="h-5 w-5" />
-            SCANNING...
+            <Pause size={14} />
+            SCANNING…
           </>
         ) : (
           <>
-            <Radar className="h-5 w-5" />
+            <Radar size={14} />
             LAUNCH SCAN
           </>
         )}
-      </Button>
+      </button>
 
-      {/* Scan Status */}
-      <div className="flex flex-col gap-1">
-        <div className="flex items-center gap-2">
-          <span className="font-mono text-xs text-muted-foreground">STATUS:</span>
-          <Badge variant={isScanning ? "amber" : "tactical"}>
+      {/* Status */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <span
+            style={{
+              fontSize: 10,
+              fontWeight: 600,
+              letterSpacing: "0.07em",
+              textTransform: "uppercase",
+              color: "rgb(var(--c-fg-muted))",
+            }}
+          >
+            Status:
+          </span>
+          <span
+            className="pill"
+            style={
+              isScanning
+                ? { backgroundColor: "rgba(255,175,0,0.1)", color: "rgb(var(--c-amber))", fontSize: 10 }
+                : { backgroundColor: "rgba(52,199,89,0.1)", color: "rgb(var(--c-green))", fontSize: 10 }
+            }
+          >
             {isScanning ? "ACTIVE" : "IDLE"}
-          </Badge>
+          </span>
         </div>
-        <div className="font-mono text-xs text-muted-foreground">
-          Last scan: {lastScan ? lastScan.toLocaleTimeString() : "Never"}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 5,
+            fontSize: 11,
+            color: "rgb(var(--c-fg-muted))",
+            fontFamily: "'JetBrains Mono', monospace",
+          }}
+        >
+          <Clock size={10} />
+          {lastScan ? `Last: ${lastScan.toLocaleTimeString()}` : "Never scanned"}
         </div>
       </div>
 
-      {/* Scan Animation */}
+      {/* Active spinner */}
       {isScanning && (
-        <div className="sm:ml-auto flex items-center gap-3">
-          <RefreshCw className="h-5 w-5 text-primary animate-spin" />
-          <div className="flex flex-col">
-            <span className="font-mono text-sm text-primary">Processing...</span>
-            <div className="h-1 w-24 sm:w-32 overflow-hidden rounded-full bg-muted">
-              <div className="h-full w-1/2 animate-pulse bg-primary" />
+        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
+          <RefreshCw
+            size={16}
+            style={{ color: "rgb(var(--c-primary))", animation: "spin 1s linear infinite" }}
+          />
+          <div>
+            <div style={{ fontSize: 12, color: "rgb(var(--c-primary))", fontWeight: 500 }}>
+              Processing…
+            </div>
+            <div
+              style={{
+                height: 2,
+                width: 120,
+                backgroundColor: "rgb(var(--c-surface-2))",
+                borderRadius: 4,
+                marginTop: 4,
+                overflow: "hidden",
+              }}
+            >
+              <div
+                style={{
+                  height: "100%",
+                  width: "50%",
+                  backgroundColor: "rgb(var(--c-primary))",
+                  animation: "pulse 1s ease-in-out infinite",
+                }}
+              />
             </div>
           </div>
         </div>
