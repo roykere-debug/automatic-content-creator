@@ -7,9 +7,9 @@
 /* ─────────────────────────────────────────────
    DESIGN SYSTEM — 4 core colors
    --bg       #0E0F14   Deepest background
-   --surface  #181923   Cards / sidebar
-   --fg       #EAEBF4   Primary text
-   --primary  #7B6EF6   Purple accent
+   --surface  #1A1B2E   Cards / sidebar
+   --fg       #E2E4F0   Primary text
+   --primary  #6C63FF   Purple accent
    ─────────────────────────────────────────────
    All other values are mathematically derived
    from these four.
@@ -19,16 +19,16 @@
   :root {
     /* ── Core palette ─────────────────── */
     --c-bg:          11 11 20;        /* #0B0B14 */
-    --c-surface:     24 25 35;        /* #181923 */
-    --c-surface-2:   31 32 48;        /* #1F2030 */
-    --c-surface-3:   38 39 58;        /* #262739 */
-    --c-fg:          234 235 244;     /* #EAEBF4 */
-    --c-fg-muted:    91  93  126;     /* #5B5D7E */
-    --c-fg-subtle:   52  53  78;      /* #34354E */
-    --c-primary:     123 110 246;     /* #7B6EF6 */
-    --c-primary-dim: 123 110 246 / 0.12;
-    --c-border:      37  38  58;      /* #25263A */
-    --c-border-soft: 30  31  47;      /* #1E1F2F */
+    --c-surface:     26 27 46;         /* #1A1B2E */
+    --c-surface-2:   35 36 58;         /* #23243A */
+    --c-surface-3:   44 46 74;         /* #2C2E4A */
+    --c-fg:          226 228 240;      /* #E2E4F0 */
+    --c-fg-muted:    107 111 138;      /* #6B6F8A */
+    --c-fg-subtle:   60  62  90;       /* #3C3E5A */
+    --c-primary:     108 99 255;       /* #6C63FF */
+    --c-primary-dim: 108 99 255 / 0.12;
+    --c-border:      46  48  80;       /* #2E3050 */
+    --c-border-soft: 38  40  66;       /* #262842 */
 
     /* ── Status colors ─────────────────── */
     --c-green:  52  199 89;
@@ -37,53 +37,53 @@
 
     /* ── Shadcn-compatible tokens ────── */
     --background:         11 11 20;
-    --foreground:         234 235 244;
-    --card:               24 25 35;
-    --card-foreground:    234 235 244;
-    --popover:            31 32 48;
-    --popover-foreground: 234 235 244;
+    --foreground:         226 228 240;
+    --card:               26 27 46;
+    --card-foreground:    226 228 240;
+    --popover:            35 36 58;
+    --popover-foreground: 226 228 240;
     --primary:            252 249 255;   /* mapped to white for button text contrast */
     --primary-foreground: 11  11  20;
-    --secondary:          31  32  48;
-    --secondary-foreground: 234 235 244;
-    --muted:              31  32  48;
-    --muted-foreground:   91  93  126;
-    --accent:             38  39  58;
-    --accent-foreground:  234 235 244;
+    --secondary:          35  36  58;
+    --secondary-foreground: 226 228 240;
+    --muted:              35  36  58;
+    --muted-foreground:   107 111 138;
+    --accent:             44  46  74;
+    --accent-foreground:  226 228 240;
     --destructive:        255 69  58;
-    --destructive-foreground: 234 235 244;
-    --border:             37  38  58;
-    --input:              31  32  48;
-    --ring:               123 110 246;
+    --destructive-foreground: 226 228 240;
+    --border:             46  48  80;
+    --input:              35  36  58;
+    --ring:               108 99  255;
     --radius:             0.5rem;
 
     /* ── Sidebar tokens ─────────────── */
-    --sidebar-background:          24 25 35;
-    --sidebar-foreground:          234 235 244;
-    --sidebar-primary:             123 110 246;
-    --sidebar-primary-foreground:  234 235 244;
-    --sidebar-accent:              31 32 48;
-    --sidebar-accent-foreground:   234 235 244;
-    --sidebar-border:              37 38 58;
-    --sidebar-ring:                123 110 246;
+    --sidebar-background:          26 27 46;
+    --sidebar-foreground:          226 228 240;
+    --sidebar-primary:             108 99  255;
+    --sidebar-primary-foreground:  226 228 240;
+    --sidebar-accent:              35 36 58;
+    --sidebar-accent-foreground:   226 228 240;
+    --sidebar-border:              46 48 80;
+    --sidebar-ring:                108 99  255;
 
     /* ── Surface / status helpers ────── */
-    --surface-elevated:  31 32 48;
-    --surface-hover:     38 39 58;
+    --surface-elevated:  35 36 58;
+    --surface-hover:     44 46 74;
     --status-active:     52 199 89;
     --status-pending:    255 175 0;
-    --status-sent:       123 110 246;
-    --grid-line:         37 38 58;
+    --status-sent:       108 99  255;
+    --grid-line:         46 48 80;
 
     /* ── Brand tokens (set by ThemeContext) ── */
-    --brand-primary:      #7B6EF6;
-    --brand-primary-glow: rgba(123, 110, 246, 0.15);
+    --brand-primary:      #6C63FF;
+    --brand-primary-glow: rgba(108, 99, 255, 0.15);
     --brand-accent:       #34C759;
     --brand-accent-glow:  rgba(52, 199, 89, 0.15);
     --brand-background:   #0B0B14;
-    --brand-surface:      #181923;
-    --brand-foreground:   #EAEBF4;
-    --brand-card-bg:      #181923;
+    --brand-surface:      #1A1B2E;
+    --brand-foreground:   #E2E4F0;
+    --brand-card-bg:      #1A1B2E;
   }
 }
 
@@ -200,6 +200,12 @@
   }
   .nav-item.active svg {
     color: rgb(var(--c-primary));
+  }
+  .nav-item-signout:hover {
+    color: rgb(var(--c-red)) !important;
+  }
+  .nav-item-signout:hover svg {
+    color: rgb(var(--c-red)) !important;
   }
 
   /* Primary button */

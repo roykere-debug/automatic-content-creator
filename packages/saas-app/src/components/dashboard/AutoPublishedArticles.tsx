@@ -43,28 +43,6 @@ export function AutoPublishedArticles({ refreshTrigger }: AutoPublishedArticlesP
         overflow: "hidden",
       }}
     >
-      {/* Header */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "12px 16px",
-          borderBottom: "1px solid rgb(var(--c-border))",
-          backgroundColor: "rgb(var(--c-surface-2))",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-          <Rocket size={13} style={{ color: "rgb(var(--c-primary))" }} />
-          <span style={{ fontSize: 12, fontWeight: 600, color: "rgb(var(--c-fg))" }}>
-            Auto-Published
-          </span>
-        </div>
-        <span className="pill pill-muted" style={{ fontSize: 10 }}>
-          {articles.length} articles
-        </span>
-      </div>
-
       {/* Body */}
       <div style={{ maxHeight: 280, overflowY: "auto", padding: "8px 0" }}>
         {loading ? (
@@ -85,13 +63,19 @@ export function AutoPublishedArticles({ refreshTrigger }: AutoPublishedArticlesP
           <div
             style={{
               display: "flex",
+              flexDirection: "column",
               alignItems: "center",
               justifyContent: "center",
               padding: "40px 0",
+              gap: 6,
             }}
           >
+            <Rocket size={28} style={{ color: "rgb(var(--c-fg-muted))", opacity: 0.4 }} />
             <span style={{ fontSize: 12, color: "rgb(var(--c-fg-muted))" }}>
               No auto-published articles yet
+            </span>
+            <span style={{ fontSize: 11, color: "rgb(var(--c-fg-subtle))" }}>
+              Launch a scan to get started
             </span>
           </div>
         ) : (
@@ -120,7 +104,7 @@ export function AutoPublishedArticles({ refreshTrigger }: AutoPublishedArticlesP
               <Rocket
                 size={12}
                 style={{
-                  color: "rgb(var(--c-primary))",
+                  color: "rgb(var(--c-fg-muted))",
                   flexShrink: 0,
                   marginTop: 2,
                 }}

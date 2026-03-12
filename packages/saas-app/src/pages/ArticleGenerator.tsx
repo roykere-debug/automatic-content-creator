@@ -359,10 +359,10 @@ export default function ArticleGenerator() {
           <div className="flex items-center gap-3">
             <FileText className="h-5 w-5 md:h-6 md:w-6 text-primary" />
             <div>
-              <h1 className="font-mono text-lg md:text-xl font-bold">
+              <h1 className="font-mono text-lg md:text-xl font-bold" dir="rtl" lang="he" style={{ direction: "rtl", textAlign: "right" }}>
                 {draftId ? "עריכת טיוטה" : "יצירת כתבה"}
               </h1>
-              <p className="font-mono text-[10px] md:text-xs text-muted-foreground">
+              <p className="font-mono text-[10px] md:text-xs text-muted-foreground" dir="rtl" lang="he" style={{ direction: "rtl", textAlign: "right" }}>
                 {draftId ? "ערוך והמשך לעבוד על הכתבה" : "צור כתבה מותאמת SEO בסגנון i-HLS"}
               </p>
             </div>
@@ -378,7 +378,7 @@ export default function ArticleGenerator() {
         <Card className="border-primary/30">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="font-mono text-sm">כתבת המקור</CardTitle>
+              <CardTitle className="font-mono text-sm" dir="rtl" lang="he" style={{ direction: "rtl" }}>כתבת המקור</CardTitle>
               <Badge variant="outline">{articleSource}</Badge>
             </div>
           </CardHeader>
@@ -392,9 +392,9 @@ export default function ArticleGenerator() {
             )}
             
             {duplicateWarning?.exists && (
-              <Alert variant="destructive" className="border-yellow-500/50 bg-yellow-500/10">
-                <AlertTriangle className="h-4 w-4 text-yellow-500" />
-                <AlertDescription className="text-yellow-200">
+              <Alert variant="destructive" style={{ backgroundColor: "rgb(var(--c-surface-2))", borderColor: "rgb(var(--c-amber) / 0.4)" }}>
+                <AlertTriangle className="h-4 w-4" style={{ color: "rgb(var(--c-amber))" }} />
+                <AlertDescription style={{ color: "rgb(var(--c-fg))" }}>
                   <div className="font-medium mb-1">⚠️ כתבה דומה כבר קיימת בוורדפרס:</div>
                   <ul className="text-xs space-y-1">
                     {duplicateWarning.posts.map((post) => (
@@ -434,6 +434,8 @@ export default function ArticleGenerator() {
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-xs text-primary hover:underline inline-flex items-center gap-1"
+                  dir="rtl"
+                  lang="he"
                 >
                   פתח מקור <ExternalLink className="h-3 w-3" />
                 </a>

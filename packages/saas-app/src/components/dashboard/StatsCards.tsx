@@ -37,34 +37,10 @@ export function StatsCards({ refreshTrigger }: StatsCardsProps) {
   }, [refreshTrigger]);
 
   const cards = [
-    {
-      label: "New Leads",
-      value: stats.newLeads,
-      icon: FileText,
-      accent: "rgb(var(--c-primary))",
-      accentBg: "rgb(var(--c-primary-dim))",
-    },
-    {
-      label: "Drafts Ready",
-      value: stats.draftsReady,
-      icon: CheckCircle,
-      accent: "rgb(var(--c-amber))",
-      accentBg: "rgba(255,175,0,0.1)",
-    },
-    {
-      label: "Sent to WP",
-      value: stats.sentToWp,
-      icon: Send,
-      accent: "rgb(var(--c-green))",
-      accentBg: "rgba(52,199,89,0.1)",
-    },
-    {
-      label: "Needs Review",
-      value: stats.flaggedForReview,
-      icon: AlertTriangle,
-      accent: "rgb(var(--c-red))",
-      accentBg: "rgba(255,69,58,0.1)",
-    },
+    { label: "New Leads",     value: stats.newLeads,         icon: FileText     },
+    { label: "Drafts Ready",  value: stats.draftsReady,      icon: CheckCircle  },
+    { label: "Sent to WP",    value: stats.sentToWp,         icon: Send         },
+    { label: "Needs Review",  value: stats.flaggedForReview, icon: AlertTriangle },
   ];
 
   return (
@@ -94,7 +70,7 @@ export function StatsCards({ refreshTrigger }: StatsCardsProps) {
               (e.currentTarget as HTMLDivElement).style.borderColor = "rgb(var(--c-border))";
             }}
           >
-            {/* Top row: icon badge + label */}
+            {/* Top row: icon + label */}
             <div
               style={{
                 display: "flex",
@@ -114,19 +90,7 @@ export function StatsCards({ refreshTrigger }: StatsCardsProps) {
               >
                 {card.label}
               </span>
-              <div
-                style={{
-                  width: 28,
-                  height: 28,
-                  borderRadius: 6,
-                  backgroundColor: card.accentBg,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <Icon size={13} style={{ color: card.accent }} />
-              </div>
+              <Icon size={14} style={{ color: "rgb(var(--c-fg-muted))" }} />
             </div>
 
             {/* Value */}

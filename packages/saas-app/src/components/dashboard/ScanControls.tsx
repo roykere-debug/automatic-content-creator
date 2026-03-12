@@ -45,12 +45,12 @@ export function ScanControls({ onLaunchScan, isScanning, lastScan }: ScanControl
         {isScanning ? (
           <>
             <Pause size={14} />
-            SCANNING…
+            Scanning…
           </>
         ) : (
           <>
             <Radar size={14} />
-            LAUNCH SCAN
+            Launch scan
           </>
         )}
       </button>
@@ -74,7 +74,7 @@ export function ScanControls({ onLaunchScan, isScanning, lastScan }: ScanControl
             style={
               isScanning
                 ? { backgroundColor: "rgba(255,175,0,0.1)", color: "rgb(var(--c-amber))", fontSize: 10 }
-                : { backgroundColor: "rgba(52,199,89,0.1)", color: "rgb(var(--c-green))", fontSize: 10 }
+                : { backgroundColor: "rgb(var(--c-surface-2))", color: "rgb(var(--c-fg-muted))", border: "1px solid rgb(var(--c-border))", fontSize: 10 }
             }
           >
             {isScanning ? "ACTIVE" : "IDLE"}

@@ -35,12 +35,6 @@ export function ChatWidget() {
         }}
         aria-label={isOpen ? "Close chat" : "Open chat assistant"}
       >
-        {!isOpen && (
-          <span
-            className="absolute top-1 right-1 w-3 h-3 rounded-full border-2 border-background animate-pulse"
-            style={{ backgroundColor: "var(--brand-primary)" }}
-          />
-        )}
         {isOpen ? <X className="w-6 h-6" /> : <MessageCircle className="w-6 h-6" />}
       </button>
     </div>

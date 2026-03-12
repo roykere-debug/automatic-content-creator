@@ -88,7 +88,7 @@ export function Sidebar() {
           {config.brand_tagline && (
             <div
               style={{
-                fontSize: 10,
+                fontSize: 12,
                 color: "rgb(var(--c-fg-muted))",
                 marginTop: 1,
                 whiteSpace: "nowrap",
@@ -105,18 +105,6 @@ export function Sidebar() {
 
       {/* ── Navigation ───────────────────── */}
       <nav style={{ flex: 1, padding: "12px 10px" }}>
-        <div
-          style={{
-            fontSize: 10,
-            fontWeight: 600,
-            letterSpacing: "0.08em",
-            textTransform: "uppercase",
-            color: "rgb(var(--c-fg-subtle))",
-            padding: "4px 6px 8px",
-          }}
-        >
-          Menu
-        </div>
         {navItems.map((item) => {
           const isActive =
             item.path === "/"
@@ -221,7 +209,7 @@ export function Sidebar() {
         {user && (
           <button
             onClick={signOut}
-            className="nav-item"
+            className="nav-item nav-item-signout"
             style={{ width: "100%", background: "none", border: "none", textAlign: "left" }}
           >
             <LogOut size={14} style={{ flexShrink: 0 }} />

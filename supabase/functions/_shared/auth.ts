@@ -19,17 +19,15 @@ export async function verifyAdminAccess(
     };
   }
 
-  const supabaseClient = createClient(
+  const token = authHeader.replace("Bearer ", "");
+  const serviceClient = createClient(
     Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_ANON_KEY")!,
-    { global: { headers: { Authorization: authHeader } } }
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
   );
 
-  const token = authHeader.replace("Bearer ", "");
-  // deno-lint-ignore no-explicit-any
-  const { data: claimsData, error: claimsError } = await (supabaseClient.auth as any).getClaims(token);
+  const { data: { user }, error: userError } = await serviceClient.auth.getUser(token);
 
-  if (claimsError || !claimsData?.claims) {
+  if (userError || !user) {
     return {
       error: new Response(
         JSON.stringify({ success: false, error: "Unauthorized" }),
@@ -39,13 +37,7 @@ export async function verifyAdminAccess(
     };
   }
 
-  const userId = claimsData.claims.sub;
-
-  // Check admin role
-  const serviceClient = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-  );
+  const userId = user.id;
 
   const { data: roleData } = await serviceClient
     .from("user_roles")

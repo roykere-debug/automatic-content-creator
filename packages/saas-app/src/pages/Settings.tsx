@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Layout } from "@/components/layout/Layout";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { Save, X, Plus, Loader2 } from "lucide-react";
+import { Check, X, Plus, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
 import { EmailRecipientsManager } from "@/components/settings/EmailRecipientsManager";
@@ -194,7 +194,7 @@ export default function Settings() {
             {saving ? (
               <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} />
             ) : (
-              <Save size={14} />
+              <Check size={14} />
             )}
             Save Settings
           </button>
@@ -222,6 +222,7 @@ export default function Settings() {
                 fontSize: 13,
                 fontWeight: 500,
                 border: "none",
+                borderBottom: activeTab === tab.id ? "2px solid rgb(var(--c-primary))" : "2px solid transparent",
                 cursor: "pointer",
                 fontFamily: "inherit",
                 transition: "all 150ms ease",

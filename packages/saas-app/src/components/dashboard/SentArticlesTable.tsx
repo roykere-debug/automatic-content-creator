@@ -72,10 +72,10 @@ export function SentArticlesTable({ onArticleClick, refreshTrigger }: SentArticl
           gap: 10,
         }}
       >
-        <Globe size={32} style={{ color: "rgb(var(--c-fg-muted))", opacity: 0.4 }} />
+        <Globe size={28} style={{ color: "rgb(var(--c-fg-muted))", opacity: 0.4 }} />
         <p style={{ fontSize: 13, color: "rgb(var(--c-fg-muted))" }}>No articles sent yet</p>
         <p style={{ fontSize: 11, color: "rgb(var(--c-fg-subtle))" }}>
-          Click "Send Article" to send the first one
+          Launch a scan then send the first article to recipients
         </p>
       </div>
     );
