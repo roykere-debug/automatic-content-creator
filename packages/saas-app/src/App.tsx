@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { WorkspaceProvider } from "@/contexts/WorkspaceContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
@@ -18,6 +18,14 @@ import Widget from "./pages/Widget";
 import Onboarding from "./pages/Onboarding";
 
 const queryClient = new QueryClient();
+
+// Only show ChatWidget when user is on an authenticated page
+const AppChatWidget = () => {
+  const location = useLocation();
+  const publicPaths = ["/auth", "/widget"];
+  if (publicPaths.some((p) => location.pathname.startsWith(p))) return null;
+  return <ChatWidget />;
+};
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -74,8 +82,7 @@ const App = () => (
                 <Route path="/widget" element={<Widget />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
-              {/* Chatbot widget — visible on all pages */}
-              <ChatWidget />
+              <AppChatWidget />
             </ThemeProvider>
           </WorkspaceProvider>
         </AuthProvider>
