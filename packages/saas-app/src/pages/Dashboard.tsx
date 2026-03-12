@@ -50,8 +50,21 @@ export default function Dashboard() {
       toast.success(`Scan complete — ${count} articles found`);
     } catch (err) {
       console.error("Scan error:", err);
-      const msg = err instanceof Error ? err.message : "Unknown error";
-      toast.error("Scan failed", { description: msg.includes("TAVILY_API_KEY") ? "Add TAVILY_API_KEY to edge function secrets" : msg });
+      // Try to extract the real error body from the edge function response
+      let msg = err instanceof Error ? err.message : "Unknown error";
+      try {
+        const ctx = (err as { context?: Response }).context;
+        if (ctx) {
+          const body = await ctx.clone().json();
+          msg = body?.error ?? body?.message ?? msg;
+        }
+      } catch { /* ignore body parse failure */ }
+
+      let description = msg;
+      if (msg.includes("TAVILY_API_KEY") || msg.includes("tavily")) description = "Add TAVILY_API_KEY to Supabase Vault secrets";
+      else if (msg.includes("403") || msg.includes("Forbidden") || msg.includes("Admin")) description = "Your user is missing admin role — run the SQL setup again";
+      else if (msg.includes("401") || msg.includes("Unauthorized")) description = "Session expired — please sign out and sign in again";
+      toast.error("Scan failed", { description });
     } finally {
       setIsScanning(false);
     }
