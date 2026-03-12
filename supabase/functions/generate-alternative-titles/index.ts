@@ -37,11 +37,11 @@ serve(async (req) => {
     if (!workspaceId) return json({ success: false, error: "No workspace found" }, 404);
 
     const settings = await loadWorkspaceSettings(workspaceId);
-    const aiGatewayUrl = Deno.env.get("OPENAI_API_BASE") || "https://api.openai.com";
-    const aiApiKey = Deno.env.get("OPENAI_API_KEY");
+    const aiGatewayUrl = Deno.env.get("AI_GATEWAY_URL") || "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
+    const aiApiKey = Deno.env.get("AI_API_KEY") || Deno.env.get("LOVABLE_API_KEY");
 
     if (!aiApiKey) {
-      return json({ success: false, error: "AI not configured" }, 500);
+      return json({ success: false, error: "AI not configured — set AI_API_KEY in Supabase secrets" }, 500);
     }
 
     const isHebrew = language === "hebrew";
@@ -53,14 +53,14 @@ serve(async (req) => {
       ? `כותרת נוכחית: "${currentTitle}"\n\nתוכן (חלקי): ${content.substring(0, 400)}\n\nצור 5 כותרות אלטרנטיביות:`
       : `Current title: "${currentTitle}"\n\nContent (excerpt): ${content.substring(0, 400)}\n\nGenerate 5 alternative headlines:`;
 
-    const aiRes = await fetch(`${aiGatewayUrl}/v1/chat/completions`, {
+    const aiRes = await fetch(aiGatewayUrl, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${aiApiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
+        model: Deno.env.get("AI_MODEL") ?? "gemini-2.5-pro",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },

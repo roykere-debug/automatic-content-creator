@@ -141,7 +141,7 @@ serve(async (req: Request): Promise<Response> => {
     }
 
     // Get AI config from environment
-    const aiGatewayUrl = Deno.env.get("AI_GATEWAY_URL") || "https://ai.gateway.lovable.dev/v1/chat/completions";
+    const aiGatewayUrl = Deno.env.get("AI_GATEWAY_URL") || "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
     const aiApiKey = Deno.env.get("AI_API_KEY") || Deno.env.get("LOVABLE_API_KEY");
     if (!aiApiKey) {
       throw new Error("No AI API key configured");
@@ -228,7 +228,7 @@ Instructions:
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-pro",
+        model: Deno.env.get("AI_MODEL") ?? "gemini-2.5-pro",
         messages: [
           { role: "system", content: settings.system_prompt },
           { role: "user", content: userPrompt },

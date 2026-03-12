@@ -247,7 +247,7 @@ async function generateTitles(
   entries: RssEntry[],
   settings: WorkspaceSettings
 ): Promise<DigestArticle[]> {
-  const aiGatewayUrl = Deno.env.get("AI_GATEWAY_URL") || "https://ai.gateway.lovable.dev/v1/chat/completions";
+  const aiGatewayUrl = Deno.env.get("AI_GATEWAY_URL") || "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
   const aiApiKey = Deno.env.get("AI_API_KEY") || Deno.env.get("LOVABLE_API_KEY");
 
   const primary = settings.primary_language || "en";
@@ -278,7 +278,7 @@ async function generateTitles(
         method: "POST",
         headers: { Authorization: `Bearer ${aiApiKey}`, "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "google/gemini-2.5-flash",
+          model: Deno.env.get("AI_MODEL") ?? "gemini-2.5-flash",
           messages: [
             {
               role: "system",

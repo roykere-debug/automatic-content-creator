@@ -81,7 +81,7 @@ Every fact must be traceable to the original source.`;
 
     console.log(`[translate-article] Processing: ${title.substring(0, 50)}`);
 
-    const aiGatewayUrl = Deno.env.get("AI_GATEWAY_URL") || "https://ai.gateway.lovable.dev/v1/chat/completions";
+    const aiGatewayUrl = Deno.env.get("AI_GATEWAY_URL") || "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
     const aiApiKey = Deno.env.get("AI_API_KEY") || Deno.env.get("LOVABLE_API_KEY");
     if (!aiApiKey) throw new Error("AI API key not configured");
 
@@ -100,7 +100,7 @@ Write two professional articles following the instructions.`;
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: Deno.env.get("AI_MODEL") ?? "gemini-2.5-flash",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },

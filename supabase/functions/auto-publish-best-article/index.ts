@@ -192,8 +192,8 @@ async function generateArticle(
 ): Promise<Generated | null> {
   console.log("=== STEP 4: Generating article with AI ===");
 
-  const AI_GATEWAY_URL = Deno.env.get("AI_GATEWAY_URL") ?? "https://ai.gateway.lovable.dev/v1/chat/completions";
-  const API_KEY = Deno.env.get("LOVABLE_API_KEY");
+  const AI_GATEWAY_URL = Deno.env.get("AI_GATEWAY_URL") ?? "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
+  const API_KEY = Deno.env.get("AI_API_KEY") ?? Deno.env.get("LOVABLE_API_KEY");
   const bilingual = settings.bilingual_mode && (settings.supported_languages?.length ?? 0) > 1;
   const secondaryLang = settings.supported_languages?.find((l) => l !== settings.primary_language);
 
@@ -205,7 +205,7 @@ async function generateArticle(
       method: "POST",
       headers: { Authorization: `Bearer ${API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: Deno.env.get("AI_MODEL") ?? "google/gemini-2.5-pro",
+        model: Deno.env.get("AI_MODEL") ?? "gemini-2.5-pro",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },

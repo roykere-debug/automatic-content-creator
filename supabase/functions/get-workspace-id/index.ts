@@ -7,11 +7,13 @@ const openCorsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-async function verifyAdmin(req: Request): Promise<{ userId: string | null; error: Response | null }> {
+/** Verify the request has a valid auth token. Returns userId or an error Response. */
+async function verifyAuth(req: Request): Promise<{ userId: string | null; isAdmin: boolean; error: Response | null }> {
   const authHeader = req.headers.get("Authorization");
   if (!authHeader?.startsWith("Bearer ")) {
     return {
       userId: null,
+      isAdmin: false,
       error: new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...openCorsHeaders, "Content-Type": "application/json" },
@@ -29,6 +31,7 @@ async function verifyAdmin(req: Request): Promise<{ userId: string | null; error
   if (error || !user) {
     return {
       userId: null,
+      isAdmin: false,
       error: new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...openCorsHeaders, "Content-Type": "application/json" },
@@ -43,17 +46,7 @@ async function verifyAdmin(req: Request): Promise<{ userId: string | null; error
     .eq("role", "admin")
     .maybeSingle();
 
-  if (!roleData) {
-    return {
-      userId: null,
-      error: new Response(JSON.stringify({ error: "Forbidden: Admin only" }), {
-        status: 403,
-        headers: { ...openCorsHeaders, "Content-Type": "application/json" },
-      }),
-    };
-  }
-
-  return { userId: user.id, error: null };
+  return { userId: user.id, isAdmin: !!roleData, error: null };
 }
 
 serve(async (req) => {
@@ -70,7 +63,7 @@ serve(async (req) => {
       headers: { ...openCorsHeaders, "Content-Type": "application/json" },
     });
 
-  const { userId, error: authError } = await verifyAdmin(req);
+  const { userId, isAdmin, error: authError } = await verifyAuth(req);
   if (authError) return authError;
 
   const serviceClient = createClient(
@@ -123,8 +116,9 @@ serve(async (req) => {
     return json({ workspaceId, settings: wsSettings ?? null });
   }
 
-  // ── action: "update" — save onboarding settings ─────────────────────────────
+  // ── action: "update" — save onboarding settings (admin only) ───────────────
   if (action === "update") {
+    if (!isAdmin) return json({ error: "Forbidden: Admin only" }, 403);
     const workspaceId = bodyWsId ?? (await resolveWorkspaceId());
     if (!workspaceId) return json({ error: "No workspace found" }, 404);
     if (!settings) return json({ error: "settings required" }, 400);

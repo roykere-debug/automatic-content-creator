@@ -26,67 +26,107 @@ export default function Dashboard() {
     return keywords[Math.floor(Math.random() * keywords.length)];
   };
 
-  const handleLaunchScan = useCallback(() => {
+  const handleLaunchScan = useCallback(async () => {
     setIsScanning(true);
     toast.info("Starting scan...", { description: "Searching for new articles..." });
-    setTimeout(() => {
-      setIsScanning(false);
+    try {
+      const query = getScanQuery();
+      const { data, error } = await supabase.functions.invoke("search-news", {
+        body: { query, maxResults: 20 },
+      });
+      if (error) throw error;
+      const count = data?.articles?.length ?? 0;
       setLastScan(new Date());
       setLogs((prev) => [
-        { id: Date.now().toString(), type: "scan" as const, message: "Scan complete", timestamp: new Date(), details: "Scanned 50 items" },
+        {
+          id: Date.now().toString(),
+          type: "scan" as const,
+          message: `Found ${count} article${count !== 1 ? "s" : ""} for "${query}"`,
+          timestamp: new Date(),
+          details: data?.articles?.map((a: { title: string }) => a.title).join(", ") ?? "",
+        },
         ...prev,
       ]);
-      toast.success("Scan complete");
-    }, 3000);
-  }, []);
+      toast.success(`Scan complete — ${count} articles found`);
+    } catch (err) {
+      console.error("Scan error:", err);
+      const msg = err instanceof Error ? err.message : "Unknown error";
+      toast.error("Scan failed", { description: msg.includes("TAVILY_API_KEY") ? "Add TAVILY_API_KEY to edge function secrets" : msg });
+    } finally {
+      setIsScanning(false);
+    }
+  }, [getScanQuery]);
 
   const handleGenerateAndSendArticle = async () => {
     setIsSendingEmail(true);
     toast.info("Searching for a new article...");
     try {
+      // 1. Get active recipients
       const { data: recipientsData, error: recipientsError } = await supabase.functions.invoke("manage-recipients", {
         body: { action: "list_active" },
       });
-      if (recipientsError || !recipientsData?.success) console.error("Error fetching recipients:", recipientsError || recipientsData?.error);
+      if (recipientsError) throw new Error(`Recipients error: ${recipientsError.message}`);
       const activeRecipients = recipientsData?.data || [];
       const recipientEmails = activeRecipients.map((r: { email: string }) => r.email);
       if (recipientEmails.length === 0) {
-        toast.warning("No active recipients", { description: "Add recipients in Settings" });
+        toast.warning("No active recipients", { description: "Add email recipients in Settings → Email" });
         setIsSendingEmail(false);
         return;
       }
+
+      // 2. Get already-sent URLs to avoid duplicates
       const { data: sentData } = await supabase.functions.invoke("manage-articles", { body: { action: "get_sent_urls" } });
       const sentArticles = sentData?.data || [];
       const sentUrls = new Set(sentArticles.map((a: { article_url: string }) => a.article_url));
       const usedImageUrls = new Set(sentArticles.map((a: { image_url: string | null }) => a.image_url).filter(Boolean));
+
+      // 3. Find a new unseen article
       let newArticle = null;
-      let usedQuery = "";
-      const maxAttempts = 20;
+      const maxAttempts = 5;
       for (let attempt = 0; attempt < maxAttempts && !newArticle; attempt++) {
-        usedQuery = getScanQuery();
+        const query = getScanQuery();
         const { data: searchData, error: searchError } = await supabase.functions.invoke("search-news", {
-          body: { query: usedQuery, maxResults: 10, usedImageUrls: Array.from(usedImageUrls) },
+          body: { query, maxResults: 10, usedImageUrls: Array.from(usedImageUrls) },
         });
-        if (searchError) { console.error("Search error:", searchError); continue; }
+        if (searchError) {
+          const msg = searchError.message || "";
+          if (msg.includes("TAVILY_API_KEY") || msg.includes("not configured")) {
+            throw new Error("TAVILY_API_KEY is not set. Add it in Supabase → Edge Functions → Secrets.");
+          }
+          console.error("Search error:", searchError);
+          continue;
+        }
         if (searchData?.success && searchData?.articles?.length) {
           newArticle = searchData.articles.find((a: { url: string }) => !sentUrls.has(a.url));
         }
       }
       if (!newArticle) {
-        toast.warning("All articles already sent", { description: `Tried ${maxAttempts} different queries` });
+        toast.warning("No new articles found", { description: "All recent articles have already been sent, or no results for current keywords." });
         setIsSendingEmail(false);
         return;
       }
-      toast.info("Generating articles...");
+
+      // 4. Generate primary + secondary article
+      toast.info("Generating article content...");
       const { data: articleData, error: articleError } = await supabase.functions.invoke("translate-article", {
         body: { title: newArticle.title, content: newArticle.content, url: newArticle.url, source: newArticle.source },
       });
-      if (articleError) throw articleError;
+      if (articleError) {
+        const msg = articleError.message || "";
+        if (msg.includes("AI_API_KEY") || msg.includes("LOVABLE_API_KEY")) {
+          throw new Error("AI API key is not set. Add AI_API_KEY to Supabase → Edge Functions → Secrets.");
+        }
+        throw articleError;
+      }
+      if (!articleData?.success) throw new Error(articleData?.error || "Article generation failed");
+
       const primaryArticle = articleData?.data?.primaryArticle ?? articleData?.data?.englishArticle;
       const secondaryArticle = articleData?.data?.secondaryArticle ?? articleData?.data?.hebrewArticle;
-      if (!primaryArticle?.title || !primaryArticle?.content) throw new Error("Failed to generate primary article");
+      if (!primaryArticle?.title || !primaryArticle?.content) throw new Error("AI returned empty article — check AI_API_KEY secret");
+
+      // 5. Send emails
       const bilingual = config.bilingual_mode && secondaryArticle?.title && secondaryArticle?.content;
-      toast.info(`Sending ${recipientEmails.length * (bilingual ? 2 : 1)} emails...`);
+      toast.info(`Sending to ${recipientEmails.length} recipient${recipientEmails.length !== 1 ? "s" : ""}...`);
       const sendPromises = recipientEmails.map(async (email: string) => {
         const { data, error } = await supabase.functions.invoke("send-article-email", {
           body: {
@@ -96,31 +136,49 @@ export default function Dashboard() {
             sendBothLanguages: bilingual,
           },
         });
-        if (error) console.error(`Error sending to ${email}:`, error);
+        if (error) console.error(`Email error for ${email}:`, error);
         return { email, success: !error && data?.success };
       });
+
       const results = await Promise.all(sendPromises);
       const successCount = results.filter((r) => r.success).length;
-      if (successCount === 0) toast.error("All emails failed to send");
-      else { toast.success(`Sent to ${successCount}/${recipientEmails.length} recipients`); setRefreshTrigger((prev) => prev + 1); }
+      if (successCount === 0) {
+        toast.error("All emails failed", { description: "Check that RESEND_API_KEY is set in Edge Function Secrets" });
+      } else {
+        toast.success(`Sent to ${successCount}/${recipientEmails.length} recipients`);
+        setRefreshTrigger((prev) => prev + 1);
+      }
     } catch (err) {
       console.error("Generate & send error:", err);
       toast.error("Error sending article", { description: err instanceof Error ? err.message : "Unknown error" });
-    } finally { setIsSendingEmail(false); }
+    } finally {
+      setIsSendingEmail(false);
+    }
   };
 
   const handleSendDigest = async () => {
     setIsSendingDigest(true);
-    toast.info("Sending daily digest...");
+    toast.info("Sending daily digest...", { description: "This may take up to 60 seconds" });
     try {
       const { data, error } = await supabase.functions.invoke("daily-digest");
       if (error) throw error;
-      if (data?.success) { toast.success("Daily digest sent successfully"); setRefreshTrigger((prev) => prev + 1); }
-      else toast.error("Digest send failed", { description: data?.error });
+      if (data?.success) {
+        toast.success("Daily digest sent successfully");
+        setRefreshTrigger((prev) => prev + 1);
+      } else {
+        const errMsg = data?.error || "Unknown error";
+        let hint = "";
+        if (errMsg.includes("RESEND")) hint = " — Set RESEND_API_KEY in Edge Function Secrets";
+        else if (errMsg.includes("rss_feeds") || errMsg.includes("No candidates")) hint = " — Add RSS feeds in Settings → Content";
+        toast.error("Digest failed", { description: errMsg + hint });
+      }
     } catch (err) {
       console.error("Digest error:", err);
-      toast.error("Error sending digest");
-    } finally { setIsSendingDigest(false); }
+      const msg = err instanceof Error ? err.message : "Unknown error";
+      toast.error("Error sending digest", { description: msg });
+    } finally {
+      setIsSendingDigest(false);
+    }
   };
 
   return (

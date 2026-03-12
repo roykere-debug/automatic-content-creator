@@ -104,8 +104,12 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       });
 
       if (fnError) {
-        const errorMsg = `Failed to load workspace: ${fnError.message || "Unknown error"}`;
-        console.error(errorMsg, fnError);
+        // Log full error detail so we can diagnose in browser console
+        console.error("get-workspace-id error:", JSON.stringify(fnError), fnError);
+        const detail = (fnError as { context?: { status?: number } }).context?.status
+          ? ` (HTTP ${(fnError as { context?: { status?: number } }).context?.status})`
+          : "";
+        const errorMsg = `Failed to load workspace: ${fnError.message || "Unknown error"}${detail}`;
         setError(errorMsg);
         setIsLoading(false);
         return;

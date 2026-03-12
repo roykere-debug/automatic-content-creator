@@ -61,7 +61,9 @@ export async function verifyAdminAccess(
 
 /**
  * Get the workspace ID for a user.
- * Returns the first workspace where the user has access.
+ * First checks workspace_users for a direct link.
+ * Falls back to the first workspace in workspace_settings (handles admins
+ * who haven't been explicitly linked via workspace_users yet).
  */
 export async function getUserWorkspaceId(userId: string): Promise<string | null> {
   const supabase = createClient(
@@ -69,12 +71,22 @@ export async function getUserWorkspaceId(userId: string): Promise<string | null>
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
   );
 
-  const { data } = await supabase
+  // 1. Direct link via workspace_users
+  const { data: wsUser } = await supabase
     .from("workspace_users")
     .select("workspace_id")
     .eq("user_id", userId)
     .limit(1)
-    .single();
+    .maybeSingle();
 
-  return data?.workspace_id || null;
+  if (wsUser?.workspace_id) return wsUser.workspace_id;
+
+  // 2. Fallback: return the first available workspace (single-tenant / first-run)
+  const { data: ws } = await supabase
+    .from("workspace_settings")
+    .select("workspace_id")
+    .limit(1)
+    .maybeSingle();
+
+  return ws?.workspace_id ?? null;
 }
