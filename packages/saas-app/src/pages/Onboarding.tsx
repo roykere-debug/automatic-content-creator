@@ -685,6 +685,12 @@ export default function Onboarding() {
   const handleFinish = async () => {
     setIsSaving(true);
     try {
+      // Explicitly get session token just like we do in WorkspaceContext
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error("No active session. Please sign in again.");
+      }
+
       // All workspace_settings writes go through the edge function (service-role only table)
       const { data, error } = await supabase.functions.invoke("get-workspace-id", {
         body: {
@@ -705,6 +711,7 @@ export default function Onboarding() {
             ...(fromAddress && { email_from_address: fromAddress }),
           },
         },
+        headers: { Authorization: `Bearer ${session.access_token}` },
       });
 
       if (error) {
