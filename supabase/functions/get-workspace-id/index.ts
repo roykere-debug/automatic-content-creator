@@ -60,32 +60,34 @@ async function verifyAuth(req: Request): Promise<{ userId: string | null; isAdmi
   return { userId: user.id, isAdmin: true, error: null };
 }
 
-/** Create a brand-new workspace + settings row + workspace_users link for userId. */
-async function createWorkspace(
+/**
+ * Ensure a workspace exists for the user and return its ID.
+ * Creates the workspace + workspace_users link if they don't exist.
+ * Does NOT create workspace_settings — that is handled by a separate upsert.
+ */
+async function ensureWorkspace(
   serviceClient: ReturnType<typeof createClient>,
   userId: string
 ): Promise<string> {
-  // 1. Insert workspace row
-  const { data: ws, error: wsErr } = await serviceClient
+  // Generate UUIDs explicitly — avoids relying on a gen_random_uuid() default.
+  const workspaceId = crypto.randomUUID();
+
+  // Insert workspace row (ignore conflict on id — won't happen with fresh UUID)
+  const { error: wsErr } = await serviceClient
     .from("workspaces")
-    .insert({ name: "My Workspace" })
-    .select("id")
-    .single();
+    .insert({ id: workspaceId, name: "My Workspace" });
 
-  if (wsErr || !ws?.id) throw new Error(`Failed to create workspace: ${wsErr?.message}`);
-  const workspaceId: string = ws.id;
+  if (wsErr) throw new Error(`workspaces insert failed: ${wsErr.message} (code: ${wsErr.code})`);
 
-  // 2. Insert workspace_settings row (all columns have DB defaults)
-  const { error: settingsErr } = await serviceClient
-    .from("workspace_settings")
-    .insert({ workspace_id: workspaceId });
-
-  if (settingsErr) throw new Error(`Failed to create workspace_settings: ${settingsErr.message}`);
-
-  // 3. Link user to workspace
-  await serviceClient
+  // Link user to workspace (provide explicit id in case column has no default)
+  const { error: wsUserErr } = await serviceClient
     .from("workspace_users")
-    .insert({ user_id: userId, workspace_id: workspaceId });
+    .insert({ id: crypto.randomUUID(), user_id: userId, workspace_id: workspaceId });
+
+  if (wsUserErr) {
+    // Non-fatal if user already linked (e.g. retry scenario)
+    console.warn("workspace_users insert warning:", wsUserErr.message);
+  }
 
   return workspaceId;
 }
@@ -161,25 +163,26 @@ serve(async (req) => {
   if (action === "update") {
     if (!settings) return json({ error: "settings required" }, 400);
 
-    // Resolve or create the workspace
     let workspaceId = bodyWsId ?? (await resolveWorkspaceId());
 
     if (!workspaceId) {
-      // No workspace exists yet — create one as part of onboarding
       try {
-        workspaceId = await createWorkspace(serviceClient, userId!);
+        workspaceId = await ensureWorkspace(serviceClient, userId!);
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         return json({ error: msg }, 500);
       }
     }
 
+    // UPSERT so this works for both first-time setup and subsequent saves.
     const { error } = await serviceClient
       .from("workspace_settings")
-      .update({ ...settings, updated_at: new Date().toISOString() })
-      .eq("workspace_id", workspaceId);
+      .upsert(
+        { workspace_id: workspaceId, ...settings, updated_at: new Date().toISOString() },
+        { onConflict: "workspace_id" }
+      );
 
-    if (error) return json({ error: error.message }, 500);
+    if (error) return json({ error: `settings upsert failed: ${error.message} (code: ${error.code})` }, 500);
     return json({ success: true, workspaceId });
   }
 

@@ -707,7 +707,16 @@ export default function Onboarding() {
         },
       });
 
-      if (error) throw error;
+      if (error) {
+        // Extract the real error message from the edge function response body
+        // (supabase-js wraps it as "Edge Function returned a non-2xx status code")
+        let detail = "Edge Function returned a non-2xx status code";
+        try {
+          const body = await (error as { context?: Response }).context?.json?.();
+          if (body?.error) detail = body.error;
+        } catch { /* ignore parse errors */ }
+        throw new Error(detail);
+      }
       if (!data?.success) throw new Error(data?.error ?? "Save failed");
 
       await refetch();
