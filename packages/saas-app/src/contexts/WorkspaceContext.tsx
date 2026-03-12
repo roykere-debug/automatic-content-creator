@@ -106,11 +106,10 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       if (fnError) {
         console.error("get-workspace-id error:", JSON.stringify(fnError), fnError);
         const status = (fnError as { context?: { status?: number } }).context?.status;
-        // 401 = stale session from a different Supabase project in localStorage
-        // Sign out to clear bad tokens and let the user log in fresh
-        if (status === 401) {
-          console.warn("Stale session detected — signing out to clear tokens.");
-          await supabase.auth.signOut();
+        // 401/403 — token issue or missing role. Use default config so the user
+        // isn't stuck in a sign-out loop. They'll see default branding.
+        if (status === 401 || status === 403) {
+          console.warn(`Workspace load returned ${status} — using default config.`);
           setIsLoading(false);
           return;
         }
