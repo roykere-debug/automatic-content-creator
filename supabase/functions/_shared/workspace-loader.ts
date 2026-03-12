@@ -130,18 +130,17 @@ export async function resolveWorkspaceByOrigin(origin: string): Promise<Workspac
     .rpc("get_workspace_by_origin", { origin_url: origin });
 
   if (error || !workspaceId) {
-    // Fallback: check if localhost for dev mode
-    if (origin.startsWith("http://localhost")) {
-      // In dev, return the first workspace
-      const { data: firstSettings } = await supabase
-        .from("workspace_settings")
-        .select("workspace_id")
-        .limit(1)
-        .single();
+    // Fallback: origin not in chatbot_allowed_origins — use the first available
+    // workspace. This covers localhost dev, Vercel previews, and new setups
+    // where chatbot_allowed_origins hasn't been configured yet.
+    const { data: firstSettings } = await supabase
+      .from("workspace_settings")
+      .select("workspace_id")
+      .limit(1)
+      .single();
 
-      if (firstSettings) {
-        return loadWorkspaceSettings(firstSettings.workspace_id);
-      }
+    if (firstSettings) {
+      return loadWorkspaceSettings(firstSettings.workspace_id);
     }
     return null;
   }
