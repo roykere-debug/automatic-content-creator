@@ -19,18 +19,30 @@ interface AiCompletionResponse {
 }
 
 /**
+ * Get environment variable safely across Deno and Node.js
+ */
+function getEnv(key: string): string | undefined {
+  // @ts-ignore - Deno is only available in Deno runtime
+  if (typeof Deno !== "undefined" && Deno.env) {
+    // @ts-ignore
+    return Deno.env.get(key);
+  }
+  return process.env[key];
+}
+
+/**
  * Get the AI gateway URL from environment.
  * Falls back to Google AI Studio direct endpoint if no gateway configured.
  */
 export function getAiGatewayUrl(): string {
-  return Deno.env.get("AI_GATEWAY_URL") || "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
+  return getEnv("AI_GATEWAY_URL") || "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
 }
 
 /**
  * Get the AI API key from environment.
  */
 export function getAiApiKey(): string {
-  const key = Deno.env.get("AI_API_KEY") || Deno.env.get("LOVABLE_API_KEY") || Deno.env.get("GOOGLE_AI_API_KEY");
+  const key = getEnv("AI_API_KEY") || getEnv("LOVABLE_API_KEY") || getEnv("GOOGLE_AI_API_KEY");
   if (!key) {
     throw new Error("No AI API key configured. Set AI_API_KEY, LOVABLE_API_KEY, or GOOGLE_AI_API_KEY.");
   }

@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { Settings as SettingsIcon, Save, X, Plus, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useWorkspace } from "@/contexts/WorkspaceContext";
+import { EmailRecipientsManager } from "@/components/settings/EmailRecipientsManager";
 
 export default function Settings() {
   const { config, workspaceId, refetch } = useWorkspace();
@@ -50,35 +51,48 @@ export default function Settings() {
   const [wordpressUrl, setWordpressUrl] = useState("");
   const [wordpressUsername, setWordpressUsername] = useState("");
 
-  // Load full settings from DB on mount
+  // Load full settings from edge function on mount
+  // workspace_settings is service-role only, must go through the edge function
   useEffect(() => {
     if (!workspaceId) return;
 
-    supabase
-      .from("workspace_settings")
-      .select("*")
-      .eq("workspace_id", workspaceId)
-      .single()
-      .then(({ data }) => {
-        if (!data) return;
-        setBrandName(data.brand_name ?? config.brand_name);
-        setBrandTagline(data.brand_tagline ?? config.brand_tagline);
-        setBrandLogoUrl(data.brand_logo_url ?? "");
-        setIndustryVertical(data.industry_vertical ?? config.industry_vertical);
-        setScanKeywords(data.scan_keywords ?? []);
-        setRssFeedsJson(JSON.stringify(data.rss_feeds ?? [], null, 2));
-        setExcludedDomainsText((data.excluded_domains ?? []).join("\n"));
-        setChatbotSystemPrompt(data.chatbot_system_prompt ?? "");
-        setAllowedOriginsText((data.chatbot_allowed_origins ?? []).join("\n"));
-        setEmailSenderName(data.email_sender_name ?? "");
-        setEmailFromAddress(data.email_from_address ?? "");
-        setDashboardUrl(data.dashboard_url ?? "");
-        setPrimaryLanguage(data.primary_language ?? "en");
-        setBilingualMode(data.bilingual_mode ?? false);
-        setWordpressUrl(data.wordpress_url ?? "");
-        setWordpressUsername(data.wordpress_username ?? "");
-      });
-  }, [workspaceId]);
+    const loadSettings = async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke("get-workspace-id", {
+          body: { action: "get" },
+        });
+
+        if (error) {
+          console.error("Failed to load workspace settings:", error);
+          return;
+        }
+
+        if (!data?.settings) return;
+
+        const s = data.settings;
+        setBrandName(s.brand_name ?? config.brand_name);
+        setBrandTagline(s.brand_tagline ?? config.brand_tagline);
+        setBrandLogoUrl(s.brand_logo_url ?? "");
+        setIndustryVertical(s.industry_vertical ?? config.industry_vertical);
+        setScanKeywords(s.scan_keywords ?? []);
+        setRssFeedsJson(JSON.stringify(s.rss_feeds ?? [], null, 2));
+        setExcludedDomainsText((s.excluded_domains ?? []).join("\n"));
+        setChatbotSystemPrompt(s.chatbot_system_prompt ?? "");
+        setAllowedOriginsText((s.chatbot_allowed_origins ?? []).join("\n"));
+        setEmailSenderName(s.email_sender_name ?? "");
+        setEmailFromAddress(s.email_from_address ?? "");
+        setDashboardUrl(s.dashboard_url ?? "");
+        setPrimaryLanguage(s.primary_language ?? "en");
+        setBilingualMode(s.bilingual_mode ?? false);
+        setWordpressUrl(s.wordpress_url ?? "");
+        setWordpressUsername(s.wordpress_username ?? "");
+      } catch (err) {
+        console.error("Error loading workspace settings:", err);
+      }
+    };
+
+    loadSettings();
+  }, [workspaceId, config]);
 
   const addKeyword = () => {
     const trimmed = newKeyword.trim();
@@ -119,30 +133,33 @@ export default function Settings() {
         .map((o) => o.trim())
         .filter(Boolean);
 
-      const { error } = await supabase
-        .from("workspace_settings")
-        .update({
-          brand_name: brandName,
-          brand_tagline: brandTagline,
-          brand_logo_url: brandLogoUrl || null,
-          industry_vertical: industryVertical,
-          scan_keywords: scanKeywords,
-          rss_feeds: rssFeeds,
-          excluded_domains: excludedDomains,
-          chatbot_system_prompt: chatbotSystemPrompt || null,
-          chatbot_allowed_origins: chatbotAllowedOrigins,
-          email_sender_name: emailSenderName || null,
-          email_from_address: emailFromAddress || null,
-          dashboard_url: dashboardUrl || null,
-          primary_language: primaryLanguage,
-          bilingual_mode: bilingualMode,
-          wordpress_url: wordpressUrl || null,
-          wordpress_username: wordpressUsername || null,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("workspace_id", workspaceId);
+      // Use edge function for workspace_settings update (service-role only)
+      const { data, error } = await supabase.functions.invoke("get-workspace-id", {
+        body: {
+          action: "update",
+          settings: {
+            brand_name: brandName,
+            brand_tagline: brandTagline,
+            brand_logo_url: brandLogoUrl || null,
+            industry_vertical: industryVertical,
+            scan_keywords: scanKeywords,
+            rss_feeds: rssFeeds,
+            excluded_domains: excludedDomains,
+            chatbot_system_prompt: chatbotSystemPrompt || null,
+            chatbot_allowed_origins: chatbotAllowedOrigins,
+            email_sender_name: emailSenderName || null,
+            email_from_address: emailFromAddress || null,
+            dashboard_url: dashboardUrl || null,
+            primary_language: primaryLanguage,
+            bilingual_mode: bilingualMode,
+            wordpress_url: wordpressUrl || null,
+            wordpress_username: wordpressUsername || null,
+          },
+        },
+      });
 
       if (error) throw error;
+      if (!data?.success) throw new Error(data?.error ?? "Save failed");
 
       await refetch();
       toast.success("Settings saved", { description: "Workspace configuration updated" });
@@ -346,6 +363,9 @@ export default function Settings() {
 
           {/* =================== EMAIL =================== */}
           <TabsContent value="email">
+            <div className="mb-4">
+              <EmailRecipientsManager />
+            </div>
             <Card>
               <CardHeader>
                 <CardTitle>Email Settings</CardTitle>

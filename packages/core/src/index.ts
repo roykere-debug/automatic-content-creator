@@ -8,7 +8,7 @@ export type {
   ThemeColors,
   KeywordConfig,
   CategoryMapEntry,
-} from "./config/types.ts";
+} from "./config/types";
 
 export {
   PAYWALL_SITES,
@@ -17,17 +17,17 @@ export {
   DEFAULT_CHATBOT_GREETING,
   RATE_LIMITS,
   AI_DEFAULTS,
-} from "./config/defaults.ts";
+} from "./config/defaults";
 
 // Prompts
-export { buildArticleSystemPrompt } from "./prompts/article-generation.ts";
-export { buildChatbotSystemPrompt, buildPerplexityPrompt } from "./prompts/chatbot.ts";
-export { buildTranslationPrompt } from "./prompts/translation.ts";
+export { buildArticleSystemPrompt } from "./prompts/article-generation";
+export { buildChatbotSystemPrompt, buildPerplexityPrompt } from "./prompts/chatbot";
+export { buildTranslationPrompt } from "./prompts/translation";
 
 // Services
-export { hashIP, isDomainBlacklisted, normalizeUrl } from "./services/rate-limiter.ts";
-export { scoreArticleRelevance, passesRelevanceFilter } from "./services/keyword-filter.ts";
-export { callAiCompletion, getAiGatewayUrl, getAiApiKey } from "./services/ai-gateway.ts";
+export { hashIP, isDomainBlacklisted, normalizeUrl } from "./services/rate-limiter";
+export { scoreArticleRelevance, passesRelevanceFilter } from "./services/keyword-filter";
+export { callAiCompletion, getAiGatewayUrl, getAiApiKey } from "./services/ai-gateway";
 
 // Templates
-export { buildArticleEmailHtml } from "./templates/email-article.ts";
+export { buildArticleEmailHtml } from "./templates/email-article";

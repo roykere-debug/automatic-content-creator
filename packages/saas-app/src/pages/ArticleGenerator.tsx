@@ -168,33 +168,28 @@ export default function ArticleGenerator() {
       // If there are correction notes, include them and the current article for context
       if (correctionNotes.trim() && generatedArticles) {
         body.correctionNotes = correctionNotes.trim();
-        body.previousHebrew = {
+        body.previousPrimary = {
           title: generatedArticles.hebrew.title,
           content: generatedArticles.hebrew.content,
         };
-        body.previousEnglish = {
+        body.previousSecondary = {
           title: generatedArticles.english.title,
           content: generatedArticles.english.content,
         };
       }
 
-      const { data, error } = await supabase.functions.invoke("generate-full-article", {
+      const { data, error } = await supabase.functions.invoke("generate-article", {
         body,
       });
 
       if (error) throw error;
 
-      // Apply suggested categories to both versions
+      // Map primary/secondary (API response) → hebrew/english (component state)
+      const categories = data.suggestedCategories || [];
       const articlesWithCategories = {
-        ...data,
-        hebrew: {
-          ...data.hebrew,
-          categories: data.suggestedCategories || [],
-        },
-        english: {
-          ...data.english,
-          categories: data.suggestedCategories || [],
-        },
+        hebrew: { ...(data.primary || data.hebrew || {}), categories },
+        english: { ...(data.secondary || data.english || {}), categories },
+        suggestedCategories: categories,
       };
 
       setGeneratedArticles(articlesWithCategories);

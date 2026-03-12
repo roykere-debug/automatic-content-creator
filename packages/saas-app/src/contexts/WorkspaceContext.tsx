@@ -1,10 +1,10 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useContext, useCallback, useEffect, useState, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
 /**
- * Workspace settings loaded from workspace_settings table.
- * All components read brand, theme, topics, etc. from here instead of hardcoded values.
+ * Workspace settings loaded from workspace_settings via the get-workspace-id edge function.
+ * workspace_settings is service-role only, so all frontend access goes through that function.
  */
 export interface WorkspaceConfig {
   workspace_id: string;
@@ -58,83 +58,117 @@ interface WorkspaceContextType {
   config: WorkspaceConfig;
   workspaceId: string | null;
   isLoading: boolean;
+  isOnboardingNeeded: boolean;
+  error: string | null;
   refetch: () => Promise<void>;
 }
 
 const WorkspaceContext = createContext<WorkspaceContextType | undefined>(undefined);
 
 export function WorkspaceProvider({ children }: { children: ReactNode }) {
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const [config, setConfig] = useState<WorkspaceConfig>(DEFAULT_CONFIG);
   const [workspaceId, setWorkspaceId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const fetchWorkspaceConfig = async () => {
+  const fetchWorkspaceConfig = useCallback(async () => {
+    // Wait for auth to fully settle before calling the edge function.
+    // Without this guard, functions.invoke fires before the session token
+    // is committed to the Supabase client, resulting in a 401.
+    if (authLoading) return;
+
     if (!user) {
       setConfig(DEFAULT_CONFIG);
       setIsLoading(false);
+      setError(null);
       return;
     }
 
     try {
-      // Get user's workspace
-      const { data: wsUser } = await supabase
-        .from("workspace_users")
-        .select("workspace_id")
-        .eq("user_id", user.id)
-        .limit(1)
-        .single();
+      setError(null);
 
-      if (!wsUser) {
+      // Explicitly get the session token and pass it in the request header.
+      // Relying on functions.invoke to auto-attach the token causes a race
+      // condition — the session may not be committed to the client yet.
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
         setIsLoading(false);
         return;
       }
 
-      setWorkspaceId(wsUser.workspace_id);
+      // workspace_settings is service-role only — must use the edge function
+      const { data, error: fnError } = await supabase.functions.invoke("get-workspace-id", {
+        body: { action: "get" },
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
 
-      // Get workspace settings
-      const { data: settings, error } = await supabase
-        .from("workspace_settings")
-        .select("*")
-        .eq("workspace_id", wsUser.workspace_id)
-        .single();
+      if (fnError) {
+        const errorMsg = `Failed to load workspace: ${fnError.message || "Unknown error"}`;
+        console.error(errorMsg, fnError);
+        setError(errorMsg);
+        setIsLoading(false);
+        return;
+      }
 
-      if (error || !settings) {
-        console.error("Failed to load workspace settings:", error);
+      if (!data?.workspaceId) {
+        const errorMsg = "No workspace found. Please contact support.";
+        console.warn(errorMsg);
+        setError(errorMsg);
+        setIsLoading(false);
+        return;
+      }
+
+      const { workspaceId: wsId, settings } = data as {
+        workspaceId: string;
+        settings: Record<string, unknown> | null;
+      };
+
+      setWorkspaceId(wsId);
+
+      if (!settings) {
         setIsLoading(false);
         return;
       }
 
       setConfig({
-        workspace_id: wsUser.workspace_id,
-        brand_name: settings.brand_name || DEFAULT_CONFIG.brand_name,
-        brand_tagline: settings.brand_tagline || DEFAULT_CONFIG.brand_tagline,
-        brand_logo_url: settings.brand_logo_url || null,
-        industry_vertical: settings.industry_vertical || DEFAULT_CONFIG.industry_vertical,
-        scan_keywords: settings.scan_keywords || [],
-        chatbot_topics: settings.chatbot_topics || [],
-        chatbot_greeting: settings.chatbot_greeting || DEFAULT_CONFIG.chatbot_greeting,
+        workspace_id: wsId,
+        brand_name: (settings.brand_name as string) ?? DEFAULT_CONFIG.brand_name,
+        brand_tagline: (settings.brand_tagline as string) ?? DEFAULT_CONFIG.brand_tagline,
+        brand_logo_url: (settings.brand_logo_url as string | null) ?? null,
+        industry_vertical: (settings.industry_vertical as string) ?? DEFAULT_CONFIG.industry_vertical,
+        scan_keywords: (settings.scan_keywords as string[]) ?? [],
+        chatbot_topics: (settings.chatbot_topics as WorkspaceConfig["chatbot_topics"]) ?? [],
+        chatbot_greeting:
+          (settings.chatbot_greeting as WorkspaceConfig["chatbot_greeting"]) ??
+          DEFAULT_CONFIG.chatbot_greeting,
         theme_colors: {
           ...DEFAULT_CONFIG.theme_colors,
-          ...(settings.theme_colors || {}),
+          ...((settings.theme_colors as Partial<WorkspaceConfig["theme_colors"]>) || {}),
         },
-        supported_languages: settings.supported_languages || ["en"],
-        primary_language: settings.primary_language || "en",
-        bilingual_mode: settings.bilingual_mode ?? false,
+        supported_languages: (settings.supported_languages as string[]) ?? ["en"],
+        primary_language: (settings.primary_language as string) ?? "en",
+        bilingual_mode: (settings.bilingual_mode as boolean) ?? false,
       });
-    } catch (error) {
-      console.error("Error loading workspace:", error);
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : "Unknown error loading workspace";
+      console.error("WorkspaceContext error:", err);
+      setError(errorMsg);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [user, authLoading]);
 
   useEffect(() => {
     fetchWorkspaceConfig();
-  }, [user]);
+  }, [fetchWorkspaceConfig]);
+
+  const isOnboardingNeeded = workspaceId !== null && config.scan_keywords.length === 0;
 
   return (
-    <WorkspaceContext.Provider value={{ config, workspaceId, isLoading, refetch: fetchWorkspaceConfig }}>
+    <WorkspaceContext.Provider
+      value={{ config, workspaceId, isLoading, isOnboardingNeeded, error, refetch: fetchWorkspaceConfig }}
+    >
       {children}
     </WorkspaceContext.Provider>
   );

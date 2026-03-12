@@ -1,4 +1,6 @@
+import { useEffect, useState } from "react";
 import { FileText, CheckCircle, Send, AlertTriangle } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Stats {
   newLeads: number;
@@ -8,10 +10,41 @@ interface Stats {
 }
 
 interface StatsCardsProps {
-  stats: Stats;
+  refreshTrigger?: number;
 }
 
-export function StatsCards({ stats }: StatsCardsProps) {
+export function StatsCards({ refreshTrigger }: StatsCardsProps) {
+  const [stats, setStats] = useState<Stats>({
+    newLeads: 0,
+    draftsReady: 0,
+    sentToWp: 0,
+    flaggedForReview: 0,
+  });
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      const { data } = await supabase
+        .from("article_drafts")
+        .select("status");
+
+      if (data) {
+        const counts = data.reduce(
+          (acc, row) => {
+            if (row.status === "draft") acc.draftsReady++;
+            else if (row.status === "sent_to_wp" || row.status === "published_hebrew" || row.status === "published_english") acc.sentToWp++;
+            else if (row.status === "flagged") acc.flaggedForReview++;
+            else acc.newLeads++;
+            return acc;
+          },
+          { newLeads: 0, draftsReady: 0, sentToWp: 0, flaggedForReview: 0 }
+        );
+        setStats(counts);
+      }
+    };
+
+    fetchStats();
+  }, [refreshTrigger]);
+
   const cards = [
     {
       label: "New Leads",

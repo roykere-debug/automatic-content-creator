@@ -218,11 +218,152 @@ export type Database = {
         }
         Relationships: []
       }
+      workspace_users: {
+        Row: {
+          id: string
+          workspace_id: string
+          user_id: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          workspace_id: string
+          user_id: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          workspace_id?: string
+          user_id?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
+      workspace_settings: {
+        Row: {
+          workspace_id: string
+          brand_name: string
+          brand_tagline: string
+          brand_logo_url: string | null
+          industry_vertical: string
+          wordpress_url: string
+          wordpress_username: string
+          wordpress_app_password: string
+          scan_keywords: string[]
+          default_search_query: string | null
+          excluded_keywords: string[]
+          excluded_domains: string[]
+          priority_sources: string[]
+          trusted_domains: string[]
+          rss_feeds: Json
+          keywords: Json
+          default_categories: string[]
+          category_blacklist: string[]
+          category_map: Json
+          always_include_category: string | null
+          system_prompt: string
+          chatbot_system_prompt: string | null
+          chatbot_topics: Json
+          chatbot_allowed_origins: string[]
+          chatbot_greeting: Json
+          email_sender_name: string
+          email_from_address: string | null
+          dashboard_url: string | null
+          fallback_images: string[]
+          default_image_query: string
+          supported_languages: string[]
+          primary_language: string
+          bilingual_mode: boolean
+          theme_colors: Json
+          updated_at: string | null
+        }
+        Insert: {
+          workspace_id: string
+          brand_name?: string
+          brand_tagline?: string
+          brand_logo_url?: string | null
+          industry_vertical?: string
+          wordpress_url?: string
+          wordpress_username?: string
+          wordpress_app_password?: string
+          scan_keywords?: string[]
+          default_search_query?: string | null
+          excluded_keywords?: string[]
+          excluded_domains?: string[]
+          priority_sources?: string[]
+          trusted_domains?: string[]
+          rss_feeds?: Json
+          keywords?: Json
+          default_categories?: string[]
+          category_blacklist?: string[]
+          category_map?: Json
+          always_include_category?: string | null
+          system_prompt?: string
+          chatbot_system_prompt?: string | null
+          chatbot_topics?: Json
+          chatbot_allowed_origins?: string[]
+          chatbot_greeting?: Json
+          email_sender_name?: string
+          email_from_address?: string | null
+          dashboard_url?: string | null
+          fallback_images?: string[]
+          default_image_query?: string
+          supported_languages?: string[]
+          primary_language?: string
+          bilingual_mode?: boolean
+          theme_colors?: Json
+          updated_at?: string | null
+        }
+        Update: {
+          workspace_id?: string
+          brand_name?: string
+          brand_tagline?: string
+          brand_logo_url?: string | null
+          industry_vertical?: string
+          wordpress_url?: string
+          wordpress_username?: string
+          wordpress_app_password?: string
+          scan_keywords?: string[]
+          default_search_query?: string | null
+          excluded_keywords?: string[]
+          excluded_domains?: string[]
+          priority_sources?: string[]
+          trusted_domains?: string[]
+          rss_feeds?: Json
+          keywords?: Json
+          default_categories?: string[]
+          category_blacklist?: string[]
+          category_map?: Json
+          always_include_category?: string | null
+          system_prompt?: string
+          chatbot_system_prompt?: string | null
+          chatbot_topics?: Json
+          chatbot_allowed_origins?: string[]
+          chatbot_greeting?: Json
+          email_sender_name?: string
+          email_from_address?: string | null
+          dashboard_url?: string | null
+          fallback_images?: string[]
+          default_image_query?: string
+          supported_languages?: string[]
+          primary_language?: string
+          bilingual_mode?: boolean
+          theme_colors?: Json
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      get_workspace_by_origin: {
+        Args: {
+          origin_url: string
+        }
+        Returns: string | null
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

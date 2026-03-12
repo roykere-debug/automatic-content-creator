@@ -15,6 +15,7 @@ import ArticleGenerator from "./pages/ArticleGenerator";
 import Drafts from "./pages/Drafts";
 import NotFound from "./pages/NotFound";
 import Widget from "./pages/Widget";
+import Onboarding from "./pages/Onboarding";
 
 const queryClient = new QueryClient();
 
@@ -58,6 +59,14 @@ const App = () => (
                   element={
                     <ProtectedRoute requireAdmin>
                       <Drafts />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/onboarding"
+                  element={
+                    <ProtectedRoute requireAdmin skipOnboardingCheck>
+                      <Onboarding />
                     </ProtectedRoute>
                   }
                 />

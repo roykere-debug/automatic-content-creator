@@ -5,11 +5,11 @@ import { parseFeed } from "https://deno.land/x/rss@1.0.0/mod.ts";
 import { openCorsHeaders } from "../_shared/cors.ts";
 import { verifyAdminAccess, getUserWorkspaceId } from "../_shared/auth.ts";
 import { loadWorkspaceSettings, getDefaultWorkspaceId } from "../_shared/workspace-loader.ts";
-import type { WorkspaceSettings } from "../../packages/core/src/config/types.ts";
-import { UNIVERSAL_PAYWALL_SITES } from "../../packages/core/src/config/defaults.ts";
-import { scoreArticleRelevance } from "../../packages/core/src/services/keyword-filter.ts";
-import { buildArticleSystemPrompt } from "../../packages/core/src/prompts/article-generation.ts";
-import { buildArticleEmailHtml } from "../../packages/core/src/templates/email-article.ts";
+import type { WorkspaceSettings } from "../../../packages/core/src/config/types.ts";
+import { PAYWALL_SITES as UNIVERSAL_PAYWALL_SITES } from "../../../packages/core/src/config/defaults.ts";
+import { scoreArticleRelevance } from "../../../packages/core/src/services/keyword-filter.ts";
+import { buildArticleSystemPrompt } from "../../../packages/core/src/prompts/article-generation.ts";
+import { buildArticleEmailHtml } from "../../../packages/core/src/templates/email-article.ts";
 
 // ==================== TYPES ====================
 

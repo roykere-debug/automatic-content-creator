@@ -4,7 +4,7 @@ import { Resend } from "https://esm.sh/resend@2.0.0";
 import { openCorsHeaders } from "../_shared/cors.ts";
 import { verifyAdminAccess, getUserWorkspaceId } from "../_shared/auth.ts";
 import { loadWorkspaceSettings } from "../_shared/workspace-loader.ts";
-import { buildArticleEmailHtml } from "../../packages/core/src/templates/email-article.ts";
+import { buildArticleEmailHtml } from "../../../packages/core/src/templates/email-article.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 

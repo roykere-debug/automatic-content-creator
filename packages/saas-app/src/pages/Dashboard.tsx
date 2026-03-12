@@ -248,7 +248,6 @@ export default function Dashboard() {
         <ScanControls
           isScanning={isScanning}
           lastScan={lastScan}
-          logs={logs}
           onLaunchScan={handleLaunchScan}
         />
 
@@ -256,7 +255,7 @@ export default function Dashboard() {
 
         <SentArticlesTable
           refreshTrigger={refreshTrigger}
-          onSelectArticle={setSelectedArticle}
+          onArticleClick={setSelectedArticle}
         />
 
         {selectedArticle && (

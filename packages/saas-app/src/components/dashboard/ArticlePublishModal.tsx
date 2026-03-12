@@ -1,6 +1,5 @@
-import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { X, Send, Loader2, Globe, ExternalLink, PenTool } from "lucide-react";
+import { X, Send, Globe, ExternalLink, PenTool } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
@@ -13,19 +12,10 @@ interface ArticlePublishModalProps {
 
 export function ArticlePublishModal({ article, onClose }: ArticlePublishModalProps) {
   const navigate = useNavigate();
-  const [isPublishing, setIsPublishing] = useState(false);
 
-  const handlePublishToWordPress = async () => {
-    setIsPublishing(true);
-    toast.info("מפרסם לוורדפרס...");
-    
-    // TODO: Implement WordPress API integration
-    // For now, simulate the publish
-    setTimeout(() => {
-      setIsPublishing(false);
-      toast.success("פורסם בהצלחה!", { description: "הכתבה עלתה לוורדפרס" });
-      onClose();
-    }, 2000);
+  const handlePublishToWordPress = () => {
+    // Navigate to the article generator to generate & publish to WordPress
+    handleGenerateArticle();
   };
 
   const handleGenerateArticle = () => {
@@ -128,20 +118,10 @@ export function ArticlePublishModal({ article, onClose }: ArticlePublishModalPro
           <Button 
             variant="tactical" 
             onClick={handlePublishToWordPress}
-            disabled={isPublishing}
             className="w-full sm:w-auto"
           >
-            {isPublishing ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                מפרסם...
-              </>
-            ) : (
-              <>
-                <Send className="h-4 w-4" />
-                פרסם לוורדפרס
-              </>
-            )}
+            <Send className="h-4 w-4" />
+            פרסם לוורדפרס
           </Button>
         </div>
       </div>

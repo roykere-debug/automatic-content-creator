@@ -13,16 +13,21 @@ interface AutoPublishedArticle {
   unsplash_photo_url: string | null;
 }
 
-export function AutoPublishedArticles() {
+interface AutoPublishedArticlesProps {
+  refreshTrigger?: number;
+}
+
+export function AutoPublishedArticles({ refreshTrigger }: AutoPublishedArticlesProps) {
   const [articles, setArticles] = useState<AutoPublishedArticle[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchArticles = async () => {
+      setLoading(true);
       const { data, error } = await supabase
         .from("article_drafts")
         .select("id, english_title, wordpress_english_url, source_name, created_at, unsplash_photo_url")
-        .eq("status", "sent_to_wp")
+        .in("status", ["sent_to_wp", "published_hebrew", "published_english"])
         .order("created_at", { ascending: false })
         .limit(10);
 
@@ -33,7 +38,7 @@ export function AutoPublishedArticles() {
     };
 
     fetchArticles();
-  }, []);
+  }, [refreshTrigger]);
 
   return (
     <div className="rounded-lg border border-border bg-card">
