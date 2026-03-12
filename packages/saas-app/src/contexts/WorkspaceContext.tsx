@@ -108,15 +108,11 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         const status = (fnError as { context?: { status?: number } }).context?.status;
         // 401/403 — token issue or missing role. Use default config so the user
         // isn't stuck in a sign-out loop. They'll see default branding.
-        if (status === 401) {
-          // 401 = session from wrong Supabase project — sign out to force fresh login
-          console.warn("Invalid session detected (401) — signing out to force re-login.");
-          await supabase.auth.signOut();
-          setIsLoading(false);
-          return;
-        }
-        if (status === 403) {
-          console.warn("Workspace load returned 403 — using default config.");
+        if (status === 401 || status === 403) {
+          // Session mismatch — use default config and let user stay logged in.
+          // They will get proper workspace config once Vercel deploys with the
+          // correct Supabase credentials and they sign in fresh.
+          console.warn(`Workspace load returned ${status} — using default config.`);
           setIsLoading(false);
           return;
         }
