@@ -133,14 +133,15 @@ serve(async (req) => {
       headers: { ...openCorsHeaders, "Content-Type": "application/json" },
     });
 
-  const { userId, error: authError } = await verifyAuth(req);
-  if (authError) {
-    console.error("verifyAuth failed:", authError);
-    return authError;
-  }
+  try {
+    const { userId, error: authError } = await verifyAuth(req);
+    if (authError) {
+      console.error("verifyAuth failed:", authError);
+      return authError;
+    }
 
-  const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "https://zupjozuwworhbwaujplu.supabase.co";
-  const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? Deno.env.get("SUPABASE_ANON_KEY");
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "https://zupjozuwworhbwaujplu.supabase.co";
+    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? Deno.env.get("SUPABASE_ANON_KEY");
 
   // Debug missing env vars safely
   console.log("Environment state:", { 
@@ -235,4 +236,11 @@ serve(async (req) => {
   }
 
   return json({ error: `Unknown action: ${action}` }, 400);
+} catch (globalError) {
+  console.error("Global edge function error:", globalError);
+  return json({ 
+     error: "Internal Server Error", 
+     details: globalError instanceof Error ? globalError.message : String(globalError) 
+  }, 500);
+}
 });
