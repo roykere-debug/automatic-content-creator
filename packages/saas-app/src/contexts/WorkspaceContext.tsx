@@ -115,8 +115,21 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 
       console.error("DEBUG: get-workspace-id result", { data, fnError });
 
+      // Try to read actual response body if available on the error
+      let errorBody = null;
+      let realErrorMessage = "Edge Function returned a non-2xx status code";
+      try {
+        if (fnError && (fnError as any).context && typeof (fnError as any).context.clone === 'function') {
+           errorBody = await (fnError as any).context.clone().json();
+           if (errorBody?.error) realErrorMessage = errorBody.error;
+           else if (errorBody?.message) realErrorMessage = errorBody.message;
+        }
+      } catch (e) {
+         console.error("Failed to parse error body", e);
+      }
+
       // #region agent log
-      fetch('http://127.0.0.1:7524/ingest/44b4a7b7-7c2f-4dbb-a472-093799b50112',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b0f921'},body:JSON.stringify({sessionId:'b0f921',location:'WorkspaceContext.tsx:108',message:'get-workspace-id result',data:{fnErrorStr: String(fnError), data},timestamp:Date.now(),runId:'run4',hypothesisId:'H3'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7524/ingest/44b4a7b7-7c2f-4dbb-a472-093799b50112',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b0f921'},body:JSON.stringify({sessionId:'b0f921',location:'WorkspaceContext.tsx:108',message:'get-workspace-id result',data:{fnErrorStr: String(fnError), data, errorBody, realErrorMessage},timestamp:Date.now(),runId:'run7',hypothesisId:'H3'})}).catch(()=>{});
       // #endregion
 
       if (fnError) {
