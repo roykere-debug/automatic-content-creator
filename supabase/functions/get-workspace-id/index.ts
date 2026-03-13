@@ -11,6 +11,7 @@ const openCorsHeaders = {
 async function verifyAuth(req: Request): Promise<{ userId: string | null; isAdmin: boolean; error: Response | null }> {
   const authHeader = req.headers.get("Authorization");
   if (!authHeader?.startsWith("Bearer ")) {
+    console.error("verifyAuth: missing or invalid Authorization header");
     return {
       userId: null,
       isAdmin: false,
@@ -22,13 +23,39 @@ async function verifyAuth(req: Request): Promise<{ userId: string | null; isAdmi
   }
 
   const token = authHeader.replace("Bearer ", "");
+  const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "https://zupjozuwworhbwaujplu.supabase.co";
+  const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? Deno.env.get("SUPABASE_ANON_KEY");
+
+  // Debug missing env vars safely
+  console.log("Environment state:", { 
+    hasUrl: !!Deno.env.get("SUPABASE_URL"), 
+    hasRoleKey: !!Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"),
+    hasAnonKey: !!Deno.env.get("SUPABASE_ANON_KEY")
+  });
+
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+     console.error("verifyAuth: Missing environment variables", {
+       hasUrl: !!SUPABASE_URL,
+       hasKey: !!SUPABASE_SERVICE_ROLE_KEY
+     });
+     return {
+        userId: null,
+        isAdmin: false,
+        error: new Response(JSON.stringify({ error: "Server configuration error" }), {
+            status: 500,
+            headers: { ...openCorsHeaders, "Content-Type": "application/json" },
+        })
+     }
+  }
+
   const serviceClient = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    SUPABASE_URL,
+    SUPABASE_SERVICE_ROLE_KEY
   );
 
   const { data: { user }, error } = await serviceClient.auth.getUser(token);
   if (error || !user) {
+    console.error("verifyAuth: getUser error", error);
     return {
       userId: null,
       isAdmin: false,
@@ -102,16 +129,37 @@ serve(async (req) => {
 
   const json = (data: unknown, status = 200) =>
     new Response(JSON.stringify(data), {
-      status,
+      status: 200, // ALWAYS return 200 so supabase-js doesn't swallow the error body
       headers: { ...openCorsHeaders, "Content-Type": "application/json" },
     });
 
   const { userId, error: authError } = await verifyAuth(req);
-  if (authError) return authError;
+  if (authError) {
+    console.error("verifyAuth failed:", authError);
+    return authError;
+  }
+
+  const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "https://zupjozuwworhbwaujplu.supabase.co";
+  const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? Deno.env.get("SUPABASE_ANON_KEY");
+
+  // Debug missing env vars safely
+  console.log("Environment state:", { 
+    hasUrl: !!Deno.env.get("SUPABASE_URL"), 
+    hasRoleKey: !!Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"),
+    hasAnonKey: !!Deno.env.get("SUPABASE_ANON_KEY")
+  });
+
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+     console.error("Missing environment variables in get-workspace-id", {
+       hasUrl: !!SUPABASE_URL,
+       hasKey: !!SUPABASE_SERVICE_ROLE_KEY
+     });
+     return json({ error: "Server configuration error: missing env vars" }, 500);
+  }
 
   const serviceClient = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    SUPABASE_URL,
+    SUPABASE_SERVICE_ROLE_KEY
   );
 
   let body: { action?: string; workspaceId?: string; settings?: Record<string, unknown> } = {};

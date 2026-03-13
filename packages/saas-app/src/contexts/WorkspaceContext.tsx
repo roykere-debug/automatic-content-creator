@@ -95,10 +95,17 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       // Relying on functions.invoke to auto-attach the token causes a race
       // condition — the session may not be committed to the client yet.
       const { data: { session } } = await supabase.auth.getSession();
+      
+      console.log("DEBUG: Got session for get-workspace-id", { hasSession: !!session, hasToken: !!session?.access_token });
+      
       if (!session?.access_token) {
         setIsLoading(false);
         return;
       }
+
+    // #region agent log
+    fetch('http://127.0.0.1:7524/ingest/44b4a7b7-7c2f-4dbb-a472-093799b50112',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b0f921'},body:JSON.stringify({sessionId:'b0f921',location:'WorkspaceContext.tsx:109',message:'get-workspace-id PRE-INVOKE',data:{hasToken: !!session.access_token},timestamp:Date.now(),runId:'run4',hypothesisId:'H3'})}).catch(()=>{});
+    // #endregion
 
       // workspace_settings is service-role only — must use the edge function
       const { data, error: fnError } = await supabase.functions.invoke("get-workspace-id", {
@@ -106,9 +113,28 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         headers: { Authorization: `Bearer ${session.access_token}` },
       });
 
+      console.error("DEBUG: get-workspace-id result", { data, fnError });
+
+      // #region agent log
+      fetch('http://127.0.0.1:7524/ingest/44b4a7b7-7c2f-4dbb-a472-093799b50112',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b0f921'},body:JSON.stringify({sessionId:'b0f921',location:'WorkspaceContext.tsx:108',message:'get-workspace-id result',data:{fnErrorStr: String(fnError), data},timestamp:Date.now(),runId:'run4',hypothesisId:'H3'})}).catch(()=>{});
+      // #endregion
+
       if (fnError) {
-        console.error("get-workspace-id error:", JSON.stringify(fnError), fnError);
-        const status = (fnError as { context?: { status?: number } }).context?.status;
+      console.error("get-workspace-id error:", JSON.stringify(fnError), fnError);
+      
+      // Detailed error response reading
+      try {
+        if (fnError?.context) {
+          const body = await (fnError.context as Response).clone().json();
+          console.error("get-workspace-id error body:", body);
+        } else if (fnError?.cause) {
+            console.error("get-workspace-id error cause:", fnError.cause);
+        }
+      } catch (e) {
+        console.error("Failed to read error body:", e);
+      }
+      
+      const status = (fnError as { context?: { status?: number } }).context?.status;
         // 401/403 — token issue or missing role. Use default config so the user
         // isn't stuck in a sign-out loop. They'll see default branding.
         if (status === 401 || status === 403) {

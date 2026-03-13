@@ -52,13 +52,20 @@ export default function Dashboard() {
       console.error("Scan error:", err);
       // Try to extract the real error body from the edge function response
       let msg = err instanceof Error ? err.message : "Unknown error";
+      let body: any = null;
       try {
         const ctx = (err as { context?: Response }).context;
         if (ctx) {
-          const body = await ctx.clone().json();
+          body = await ctx.clone().json();
           msg = body?.error ?? body?.message ?? msg;
         }
       } catch { /* ignore body parse failure */ }
+
+      console.error("DEBUG: Scan error caught", { msg, body, errString: String(err) });
+
+      // #region agent log
+      fetch('http://127.0.0.1:7524/ingest/44b4a7b7-7c2f-4dbb-a472-093799b50112',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b0f921'},body:JSON.stringify({sessionId:'b0f921',location:'Dashboard.tsx:61',message:'Scan error caught',data:{msg, body, errString: String(err)},timestamp:Date.now(),runId:'run3',hypothesisId:'H2'})}).catch(()=>{});
+      // #endregion
 
       let description = msg;
       if (msg.includes("TAVILY_API_KEY") || msg.includes("tavily")) description = "Add TAVILY_API_KEY to Supabase Vault secrets";
