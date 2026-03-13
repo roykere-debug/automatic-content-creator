@@ -110,9 +110,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       // workspace_settings is service-role only — must use the edge function
       const { data, error: fnError } = await supabase.functions.invoke("get-workspace-id", {
         body: { action: "get" },
-        headers: { 
-           Authorization: `Bearer ${session.access_token}` 
-        },
+        headers: { Authorization: `Bearer ${session.access_token}` },
       });
 
       console.error("DEBUG: get-workspace-id result", { data, fnError });

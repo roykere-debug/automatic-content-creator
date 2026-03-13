@@ -692,30 +692,28 @@ export default function Onboarding() {
         throw new Error("No active session. Please sign in again.");
       }
 
-      // All workspace_settings writes go through the edge function (service-role only table)
-      const { data, error } = await supabase.functions.invoke("get-workspace-id", {
-        body: {
-          action: "update",
-          // workspaceId is optional — the function resolves it if not provided
-          ...(workspaceId && { workspaceId }),
-          settings: {
-            brand_name: brandName || "AutoPilot Content",
-            brand_tagline: brandTagline || "Content Intelligence",
-            industry_vertical: industry,
-            scan_keywords: keywords,
-            primary_language: primaryLanguage,
-            bilingual_mode: bilingualMode,
-            supported_languages: bilingualMode
-              ? [...new Set([primaryLanguage, primaryLanguage === "he" ? "en" : "he"])]
-              : [primaryLanguage],
-            ...(senderName && { email_sender_name: senderName }),
-            ...(fromAddress && { email_from_address: fromAddress }),
-          },
+    // All workspace_settings writes go through the edge function (service-role only table)
+    const { data, error } = await supabase.functions.invoke("get-workspace-id", {
+      body: {
+        action: "update",
+        // workspaceId is optional — the function resolves it if not provided
+        ...(workspaceId && { workspaceId }),
+        settings: {
+          brand_name: brandName || "AutoPilot Content",
+          brand_tagline: brandTagline || "Content Intelligence",
+          industry_vertical: industry,
+          scan_keywords: keywords,
+          primary_language: primaryLanguage,
+          bilingual_mode: bilingualMode,
+          supported_languages: bilingualMode
+            ? [...new Set([primaryLanguage, primaryLanguage === "he" ? "en" : "he"])]
+            : [primaryLanguage],
+          ...(senderName && { email_sender_name: senderName }),
+          ...(fromAddress && { email_from_address: fromAddress }),
         },
-        headers: { 
-          Authorization: `Bearer ${session.access_token}` 
-        },
-      });
+      },
+      headers: { Authorization: `Bearer ${session.access_token}` },
+    });
 
       console.error("DEBUG Onboarding API response", { data, error });
 
