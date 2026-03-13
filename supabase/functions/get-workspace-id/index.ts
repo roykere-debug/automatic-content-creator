@@ -164,10 +164,12 @@ serve(async (req) => {
   );
 
   let body: { action?: string; workspaceId?: string; settings?: Record<string, unknown> } = {};
-  try {
-    body = await req.json();
-  } catch {
-    // no body is fine
+  if (req.method !== "GET" && req.method !== "HEAD") {
+    try {
+      body = await req.json();
+    } catch {
+      // no body is fine
+    }
   }
 
   const { action = "get", workspaceId: bodyWsId, settings } = body;
