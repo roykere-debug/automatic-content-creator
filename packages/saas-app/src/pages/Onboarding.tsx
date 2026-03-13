@@ -733,23 +733,6 @@ export default function Onboarding() {
       fetch('http://127.0.0.1:7524/ingest/44b4a7b7-7c2f-4dbb-a472-093799b50112',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b0f921'},body:JSON.stringify({sessionId:'b0f921',location:'Onboarding.tsx:715',message:'Onboarding API error',data:{errorStr: String(error), data, errorBody, realErrorMessage},timestamp:Date.now(),runId:'run6',hypothesisId:'H3'})}).catch(()=>{});
       // #endregion
 
-      if (error) {
-        throw new Error(realErrorMessage);
-      }
-        // Extract the real error message from the edge function response body
-        // (supabase-js wraps it as "Edge Function returned a non-2xx status code")
-        let detail = "Edge Function returned a non-2xx status code";
-        try {
-          const body = await (error as { context?: Response }).context?.json?.();
-          if (body?.error) detail = body.error;
-        } catch { /* ignore parse errors */ }
-        throw new Error(detail);
-      }
-      if (!data?.success) throw new Error(data?.error ?? "Save failed");
-
-      await refetch();
-      toast.success("Workspace configured! Welcome aboard.");
-      navigate("/");
     } catch (err) {
       console.error("Onboarding save error:", err);
       toast.error("Failed to save settings", {
