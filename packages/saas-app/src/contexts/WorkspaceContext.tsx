@@ -94,9 +94,9 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       // Explicitly get the session token and pass it in the request header.
       // Relying on functions.invoke to auto-attach the token causes a race
       // condition — the session may not be committed to the client yet.
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       
-      console.log("DEBUG: Got session for get-workspace-id", { hasSession: !!session, hasToken: !!session?.access_token });
+      console.log("DEBUG: Got session for get-workspace-id", { hasSession: !!session, hasToken: !!session?.access_token, sessionError });
       
       if (!session?.access_token) {
         setIsLoading(false);

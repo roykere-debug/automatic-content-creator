@@ -686,8 +686,9 @@ export default function Onboarding() {
     setIsSaving(true);
     try {
       // Explicitly get session token just like we do in WorkspaceContext
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       if (!session?.access_token) {
+        console.error("DEBUG Onboarding API: No session", { sessionError });
         throw new Error("No active session. Please sign in again.");
       }
 
@@ -741,8 +742,8 @@ export default function Onboarding() {
     } catch (err) {
       console.error("Onboarding save error:", err);
       let errorDesc = err instanceof Error ? err.message : String(err);
-      if (errorDesc === 'Failed to fetch' || errorDesc.includes('CORS')) {
-          errorDesc = "Network error. The Edge Function couldn't be reached. Please check the logs in Supabase Dashboard.";
+      if (errorDesc === 'Failed to fetch' || errorDesc.includes('CORS') || errorDesc.includes('Edge Function returned a non-2xx status code')) {
+          errorDesc = "Network error. The Edge Function couldn't be reached or returned an invalid token (401). Try signing out and signing in again.";
       }
       toast.error("Failed to save settings", {
         description: errorDesc,
