@@ -714,6 +714,12 @@ export default function Onboarding() {
         headers: { Authorization: `Bearer ${session.access_token}` },
       });
 
+      console.error("DEBUG Onboarding API response", { data, error });
+
+      // #region agent log
+      fetch('http://127.0.0.1:7524/ingest/44b4a7b7-7c2f-4dbb-a472-093799b50112',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b0f921'},body:JSON.stringify({sessionId:'b0f921',location:'Onboarding.tsx:715',message:'Onboarding API result',data:{errorStr: String(error), data},timestamp:Date.now(),runId:'run5',hypothesisId:'H3'})}).catch(()=>{});
+      // #endregion
+
       if (error) {
         // Extract the real error message from the edge function response body
         // (supabase-js wraps it as "Edge Function returned a non-2xx status code")
