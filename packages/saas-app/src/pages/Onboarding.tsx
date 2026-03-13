@@ -737,8 +737,16 @@ export default function Onboarding() {
       navigate("/");
     } catch (err) {
       console.error("Onboarding save error:", err);
+      // Try to extract the real error message from the edge function response body
+      // (supabase-js wraps it as "Edge Function returned a non-2xx status code")
+      let detail = err instanceof Error ? err.message : "Edge Function returned a non-2xx status code";
+      try {
+        const body = await (err as { context?: Response }).context?.clone()?.json?.();
+        if (body?.error) detail = body.error;
+      } catch { /* ignore parse errors */ }
+      
       toast.error("Failed to save settings", {
-        description: err instanceof Error ? err.message : "Unknown error",
+        description: detail,
       });
     } finally {
       setIsSaving(false);
