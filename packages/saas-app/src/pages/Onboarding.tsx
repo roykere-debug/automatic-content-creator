@@ -716,11 +716,26 @@ export default function Onboarding() {
 
       console.error("DEBUG Onboarding API response", { data, error });
 
+      // Try to read actual response body if available on the error
+      let errorBody = null;
+      let realErrorMessage = "Edge Function returned a non-2xx status code";
+      try {
+        if (error && (error as any).context && typeof (error as any).context.clone === 'function') {
+           errorBody = await (error as any).context.clone().json();
+           if (errorBody?.error) realErrorMessage = errorBody.error;
+           else if (errorBody?.message) realErrorMessage = errorBody.message;
+        }
+      } catch (e) {
+         console.error("Failed to parse error body", e);
+      }
+
       // #region agent log
-      fetch('http://127.0.0.1:7524/ingest/44b4a7b7-7c2f-4dbb-a472-093799b50112',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b0f921'},body:JSON.stringify({sessionId:'b0f921',location:'Onboarding.tsx:715',message:'Onboarding API result',data:{errorStr: String(error), data},timestamp:Date.now(),runId:'run5',hypothesisId:'H3'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7524/ingest/44b4a7b7-7c2f-4dbb-a472-093799b50112',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b0f921'},body:JSON.stringify({sessionId:'b0f921',location:'Onboarding.tsx:715',message:'Onboarding API error',data:{errorStr: String(error), data, errorBody, realErrorMessage},timestamp:Date.now(),runId:'run6',hypothesisId:'H3'})}).catch(()=>{});
       // #endregion
 
       if (error) {
+        throw new Error(realErrorMessage);
+      }
         // Extract the real error message from the edge function response body
         // (supabase-js wraps it as "Edge Function returned a non-2xx status code")
         let detail = "Edge Function returned a non-2xx status code";
@@ -737,16 +752,8 @@ export default function Onboarding() {
       navigate("/");
     } catch (err) {
       console.error("Onboarding save error:", err);
-      // Try to extract the real error message from the edge function response body
-      // (supabase-js wraps it as "Edge Function returned a non-2xx status code")
-      let detail = err instanceof Error ? err.message : "Edge Function returned a non-2xx status code";
-      try {
-        const body = await (err as { context?: Response }).context?.clone()?.json?.();
-        if (body?.error) detail = body.error;
-      } catch { /* ignore parse errors */ }
-      
       toast.error("Failed to save settings", {
-        description: detail,
+        description: err instanceof Error ? err.message : String(err),
       });
     } finally {
       setIsSaving(false);
