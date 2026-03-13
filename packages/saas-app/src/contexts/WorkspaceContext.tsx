@@ -110,7 +110,9 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       // workspace_settings is service-role only — must use the edge function
       const { data, error: fnError } = await supabase.functions.invoke("get-workspace-id", {
         body: { action: "get" },
-        headers: { Authorization: `Bearer ${session.access_token}` },
+        headers: { 
+           Authorization: `Bearer ${session.access_token}` 
+        },
       });
 
       console.error("DEBUG: get-workspace-id result", { data, fnError });
@@ -148,10 +150,10 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       }
       
       const status = (fnError as { context?: { status?: number } }).context?.status;
-        // 401/403 — token issue or missing role. Use default config so the user
-        // isn't stuck in a sign-out loop. They'll see default branding.
-        if (status === 401 || status === 403) {
-          // Session mismatch — use default config and let user stay logged in.
+      // 401/403 — token issue or missing role. Use default config so the user
+      // isn't stuck in a sign-out loop. They'll see default branding.
+      if (status === 401 || status === 403 || String(fnError).includes('Failed to fetch')) {
+        // Session mismatch or CORS network error — use default config and let user stay logged in.
           // They will get proper workspace config once Vercel deploys with the
           // correct Supabase credentials and they sign in fresh.
           console.warn(`Workspace load returned ${status} — using default config.`);

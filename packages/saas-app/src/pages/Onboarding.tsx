@@ -711,7 +711,9 @@ export default function Onboarding() {
             ...(fromAddress && { email_from_address: fromAddress }),
           },
         },
-        headers: { Authorization: `Bearer ${session.access_token}` },
+        headers: { 
+          Authorization: `Bearer ${session.access_token}` 
+        },
       });
 
       console.error("DEBUG Onboarding API response", { data, error });
@@ -724,6 +726,9 @@ export default function Onboarding() {
            errorBody = await (error as any).context.clone().json();
            if (errorBody?.error) realErrorMessage = errorBody.error;
            else if (errorBody?.message) realErrorMessage = errorBody.message;
+        } else if (error && (error as any).message) {
+            // For network errors like 401s that the supabase client returns
+            realErrorMessage = (error as any).message;
         }
       } catch (e) {
          console.error("Failed to parse error body", e);
@@ -735,8 +740,12 @@ export default function Onboarding() {
 
     } catch (err) {
       console.error("Onboarding save error:", err);
+      let errorDesc = err instanceof Error ? err.message : String(err);
+      if (errorDesc === 'Failed to fetch' || errorDesc.includes('CORS')) {
+          errorDesc = "Network error. The Edge Function couldn't be reached. Please check the logs in Supabase Dashboard.";
+      }
       toast.error("Failed to save settings", {
-        description: err instanceof Error ? err.message : String(err),
+        description: errorDesc,
       });
     } finally {
       setIsSaving(false);
