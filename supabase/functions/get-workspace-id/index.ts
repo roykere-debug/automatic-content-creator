@@ -166,9 +166,13 @@ serve(async (req) => {
   let body: { action?: string; workspaceId?: string; settings?: Record<string, unknown> } = {};
   if (req.method !== "GET" && req.method !== "HEAD") {
     try {
-      body = await req.json();
-    } catch {
+      const text = await req.text();
+      if (text) {
+         body = JSON.parse(text);
+      }
+    } catch (e) {
       // no body is fine
+      console.log("Failed to parse body:", e);
     }
   }
 

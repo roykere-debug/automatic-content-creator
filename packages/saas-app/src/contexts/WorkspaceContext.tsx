@@ -96,24 +96,16 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       // condition — the session may not be committed to the client yet.
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       
-      console.log("DEBUG: Got session for get-workspace-id", { hasSession: !!session, hasToken: !!session?.access_token, sessionError });
-      
       if (!session?.access_token) {
         setIsLoading(false);
         return;
       }
-
-    // #region agent log
-    fetch('http://127.0.0.1:7524/ingest/44b4a7b7-7c2f-4dbb-a472-093799b50112',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b0f921'},body:JSON.stringify({sessionId:'b0f921',location:'WorkspaceContext.tsx:109',message:'get-workspace-id PRE-INVOKE',data:{hasToken: !!session.access_token},timestamp:Date.now(),runId:'run4',hypothesisId:'H3'})}).catch(()=>{});
-    // #endregion
 
       // workspace_settings is service-role only — must use the edge function
       const { data, error: fnError } = await supabase.functions.invoke("get-workspace-id", {
         body: { action: "get" },
         headers: { Authorization: `Bearer ${session.access_token}` },
       });
-
-      console.error("DEBUG: get-workspace-id result", { data, fnError });
 
       // Try to read actual response body if available on the error
       let errorBody = null;
