@@ -40,7 +40,31 @@ export default function Dashboard() {
         headers: authHeader,
       });
       if (error) throw error;
-      const count = data?.articles?.length ?? 0;
+      const articles: Array<{ title: string; url: string; image?: string; source?: string }> = data?.articles ?? [];
+      const count = articles.length;
+
+      // Save new articles to article_drafts as leads (deduplicate against existing)
+      if (count > 0 && session.user?.id) {
+        const { data: existing } = await supabase
+          .from("article_drafts")
+          .select("source_url");
+        const knownUrls = new Set((existing ?? []).map((d: { source_url: string }) => d.source_url));
+        const newLeads = articles.filter((a) => a.url && !knownUrls.has(a.url));
+        if (newLeads.length > 0) {
+          await supabase.from("article_drafts").insert(
+            newLeads.map((a) => ({
+              user_id: session.user.id,
+              source_url: a.url,
+              source_title: a.title,
+              source_image: a.image ?? null,
+              source_name: a.source ?? null,
+              status: "lead",
+            }))
+          );
+          setRefreshTrigger((prev) => prev + 1);
+        }
+      }
+
       setLastScan(new Date());
       setLogs((prev) => [
         {
@@ -48,7 +72,7 @@ export default function Dashboard() {
           type: "scan" as const,
           message: `Found ${count} article${count !== 1 ? "s" : ""} for "${query}"`,
           timestamp: new Date(),
-          details: data?.articles?.map((a: { title: string }) => a.title).join(", ") ?? "",
+          details: articles.map((a) => a.title).join(", "),
         },
         ...prev,
       ]);
@@ -171,9 +195,31 @@ export default function Dashboard() {
 
       const results = await Promise.all(sendPromises);
       const successCount = results.filter((r) => r.success).length;
+      const successEmails = results.filter((r) => r.success).map((r) => r.email);
+
       if (successCount === 0) {
-        toast.error("All emails failed", { description: "Check that RESEND_API_KEY is set in Edge Function Secrets" });
+        toast.error("All emails failed", { description: "Check that RESEND_API_KEY is set in Supabase Vault" });
       } else {
+        // Record in sent_articles so it shows up in the dashboard table
+        await supabase.functions.invoke("manage-articles", {
+          body: {
+            action: "add",
+            article_url: newArticle.url,
+            article_title: primaryArticle.title,
+            keyword_used: getScanQuery(),
+            email_sent_to: successEmails.join(", "),
+            image_url: newArticle.image ?? null,
+          },
+          headers: authHeader,
+        });
+
+        // Update the lead status in article_drafts if this article was a saved lead
+        await supabase
+          .from("article_drafts")
+          .update({ status: "draft" })
+          .eq("source_url", newArticle.url)
+          .eq("status", "lead");
+
         toast.success(`Sent to ${successCount}/${recipientEmails.length} recipients`);
         setRefreshTrigger((prev) => prev + 1);
       }
