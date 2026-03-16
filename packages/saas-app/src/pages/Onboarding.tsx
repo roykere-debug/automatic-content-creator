@@ -688,7 +688,7 @@ export default function Onboarding() {
       // Explicitly get session token just like we do in WorkspaceContext
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       if (!session?.access_token) {
-        console.error("DEBUG Onboarding API: No session", { sessionError });
+        console.error("Onboarding: No active session", sessionError);
         throw new Error("No active session. Please sign in again.");
       }
 
@@ -715,28 +715,30 @@ export default function Onboarding() {
       headers: { Authorization: `Bearer ${session.access_token}` },
     });
 
-      console.error("DEBUG Onboarding API response", { data, error });
-
-      // Try to read actual response body if available on the error
-      let errorBody = null;
-      let realErrorMessage = "Edge Function returned a non-2xx status code";
-      try {
-        if (error && (error as any).context && typeof (error as any).context.clone === 'function') {
-           errorBody = await (error as any).context.clone().json();
-           if (errorBody?.error) realErrorMessage = errorBody.error;
-           else if (errorBody?.message) realErrorMessage = errorBody.message;
-        } else if (error && (error as any).message) {
-            // For network errors like 401s that the supabase client returns
+      if (error) {
+        // Try to read actual error message from the response body
+        let realErrorMessage = "Failed to save settings";
+        try {
+          if ((error as any).context && typeof (error as any).context.clone === 'function') {
+            const errorBody = await (error as any).context.clone().json();
+            if (errorBody?.error) realErrorMessage = errorBody.error;
+            else if (errorBody?.message) realErrorMessage = errorBody.message;
+          } else if ((error as any).message) {
             realErrorMessage = (error as any).message;
-        }
-      } catch (e) {
-         console.error("Failed to parse error body", e);
+          }
+        } catch (_) { /* ignore parse errors */ }
+
+        throw new Error(realErrorMessage);
       }
 
-      // #region agent log
-      fetch('http://127.0.0.1:7524/ingest/44b4a7b7-7c2f-4dbb-a472-093799b50112',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b0f921'},body:JSON.stringify({sessionId:'b0f921',location:'Onboarding.tsx:715',message:'Onboarding API error',data:{errorStr: String(error), data, errorBody, realErrorMessage},timestamp:Date.now(),runId:'run6',hypothesisId:'H3'})}).catch(()=>{});
-      // #endregion
+      // Check for application-level errors (edge function returns 200 with error body)
+      if (data?.error) {
+        throw new Error(data.error);
+      }
 
+      // Success — reload workspace config and navigate to dashboard
+      await refetch();
+      navigate("/");
     } catch (err) {
       console.error("Onboarding save error:", err);
       let errorDesc = err instanceof Error ? err.message : String(err);

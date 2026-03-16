@@ -107,51 +107,32 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         headers: { Authorization: `Bearer ${session.access_token}` },
       });
 
-      // Try to read actual response body if available on the error
-      let errorBody = null;
-      let realErrorMessage = "Edge Function returned a non-2xx status code";
-      try {
-        if (fnError && (fnError as any).context && typeof (fnError as any).context.clone === 'function') {
-           errorBody = await (fnError as any).context.clone().json();
-           if (errorBody?.error) realErrorMessage = errorBody.error;
-           else if (errorBody?.message) realErrorMessage = errorBody.message;
-        }
-      } catch (e) {
-         console.error("Failed to parse error body", e);
-      }
-
-      // #region agent log
-      fetch('http://127.0.0.1:7524/ingest/44b4a7b7-7c2f-4dbb-a472-093799b50112',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b0f921'},body:JSON.stringify({sessionId:'b0f921',location:'WorkspaceContext.tsx:108',message:'get-workspace-id result',data:{fnErrorStr: String(fnError), data, errorBody, realErrorMessage},timestamp:Date.now(),runId:'run7',hypothesisId:'H3'})}).catch(()=>{});
-      // #endregion
-
       if (fnError) {
-      console.error("get-workspace-id error:", JSON.stringify(fnError), fnError);
-      
-      // Detailed error response reading
-      try {
-        if (fnError?.context) {
-          const body = await (fnError.context as Response).clone().json();
-          console.error("get-workspace-id error body:", body);
-        } else if (fnError?.cause) {
-            console.error("get-workspace-id error cause:", fnError.cause);
+        console.error("get-workspace-id error:", fnError);
+
+        const status = (fnError as { context?: { status?: number } }).context?.status;
+
+        // Try to extract the actual error message from the response body
+        let errorDetail = fnError.message || "Unknown error";
+        try {
+          if ((fnError as any)?.context && typeof (fnError as any).context.clone === 'function') {
+            const body = await (fnError as any).context.clone().json();
+            if (body?.error) errorDetail = body.error;
+          }
+        } catch (_) { /* ignore parse errors */ }
+
+        if (String(fnError).includes('Failed to fetch')) {
+          setError("Cannot reach the server. Please check your connection and try again.");
+        } else {
+          setError(`Failed to load workspace: ${errorDetail} (HTTP ${status ?? "?"})`);
         }
-      } catch (e) {
-        console.error("Failed to read error body:", e);
+        setIsLoading(false);
+        return;
       }
-      
-      const status = (fnError as { context?: { status?: number } }).context?.status;
-      // 401/403 — token issue or missing role. Use default config so the user
-      // isn't stuck in a sign-out loop. They'll see default branding.
-      if (status === 401 || status === 403 || String(fnError).includes('Failed to fetch')) {
-        // Session mismatch or CORS network error — use default config and let user stay logged in.
-          // They will get proper workspace config once Vercel deploys with the
-          // correct Supabase credentials and they sign in fresh.
-          console.warn(`Workspace load returned ${status} — using default config.`);
-          setIsLoading(false);
-          return;
-        }
-        const errorMsg = `Failed to load workspace: ${fnError.message || "Unknown error"} (HTTP ${status ?? "?"})`;
-        setError(errorMsg);
+
+      // Check for application-level errors (edge function returns 200 with error body)
+      if (data?.error) {
+        setError(`Failed to load workspace: ${data.error}`);
         setIsLoading(false);
         return;
       }

@@ -61,11 +61,7 @@ export default function Dashboard() {
         }
       } catch { /* ignore body parse failure */ }
 
-      console.error("DEBUG: Scan error caught", { msg, body, errString: String(err) });
-
-      // #region agent log
-      fetch('http://127.0.0.1:7524/ingest/44b4a7b7-7c2f-4dbb-a472-093799b50112',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b0f921'},body:JSON.stringify({sessionId:'b0f921',location:'Dashboard.tsx:61',message:'Scan error caught',data:{msg, body, errString: String(err)},timestamp:Date.now(),runId:'run3',hypothesisId:'H2'})}).catch(()=>{});
-      // #endregion
+      console.error("Scan error:", msg);
 
       let description = msg;
       if (msg.includes("TAVILY_API_KEY") || msg.includes("tavily")) description = "Add TAVILY_API_KEY to Supabase Vault secrets";

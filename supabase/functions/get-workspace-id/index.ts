@@ -129,7 +129,7 @@ serve(async (req) => {
 
   const json = (data: unknown, status = 200) =>
     new Response(JSON.stringify(data), {
-      status: 200, // ALWAYS return 200 so supabase-js doesn't swallow the error body
+      status,
       headers: { ...openCorsHeaders, "Content-Type": "application/json" },
     });
 
