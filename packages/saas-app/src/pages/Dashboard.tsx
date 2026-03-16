@@ -30,9 +30,14 @@ export default function Dashboard() {
     setIsScanning(true);
     toast.info("Starting scan...", { description: "Searching for new articles..." });
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) throw new Error("No active session — please sign in again.");
+      const authHeader = { Authorization: `Bearer ${session.access_token}` };
+
       const query = getScanQuery();
       const { data, error } = await supabase.functions.invoke("search-news", {
         body: { query, maxResults: 20 },
+        headers: authHeader,
       });
       if (error) throw error;
       const count = data?.articles?.length ?? 0;
@@ -77,9 +82,14 @@ export default function Dashboard() {
     setIsSendingEmail(true);
     toast.info("Searching for a new article...");
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) throw new Error("No active session — please sign in again.");
+      const authHeader = { Authorization: `Bearer ${session.access_token}` };
+
       // 1. Get active recipients
       const { data: recipientsData, error: recipientsError } = await supabase.functions.invoke("manage-recipients", {
         body: { action: "list_active" },
+        headers: authHeader,
       });
       if (recipientsError) throw new Error(`Recipients error: ${recipientsError.message}`);
       const activeRecipients = recipientsData?.data || [];
@@ -91,7 +101,7 @@ export default function Dashboard() {
       }
 
       // 2. Get already-sent URLs to avoid duplicates
-      const { data: sentData } = await supabase.functions.invoke("manage-articles", { body: { action: "get_sent_urls" } });
+      const { data: sentData } = await supabase.functions.invoke("manage-articles", { body: { action: "get_sent_urls" }, headers: authHeader });
       const sentArticles = sentData?.data || [];
       const sentUrls = new Set(sentArticles.map((a: { article_url: string }) => a.article_url));
       const usedImageUrls = new Set(sentArticles.map((a: { image_url: string | null }) => a.image_url).filter(Boolean));
@@ -103,6 +113,7 @@ export default function Dashboard() {
         const query = getScanQuery();
         const { data: searchData, error: searchError } = await supabase.functions.invoke("search-news", {
           body: { query, maxResults: 10, usedImageUrls: Array.from(usedImageUrls) },
+          headers: authHeader,
         });
         if (searchError) {
           const msg = searchError.message || "";
@@ -126,6 +137,7 @@ export default function Dashboard() {
       toast.info("Generating article content...");
       const { data: articleData, error: articleError } = await supabase.functions.invoke("translate-article", {
         body: { title: newArticle.title, content: newArticle.content, url: newArticle.url, source: newArticle.source },
+        headers: authHeader,
       });
       if (articleError) {
         const msg = articleError.message || "";
@@ -151,6 +163,7 @@ export default function Dashboard() {
             secondaryArticle: bilingual ? { title: secondaryArticle.title, content: secondaryArticle.content } : undefined,
             sendBothLanguages: bilingual,
           },
+          headers: authHeader,
         });
         if (error) console.error(`Email error for ${email}:`, error);
         return { email, success: !error && data?.success };
@@ -176,7 +189,11 @@ export default function Dashboard() {
     setIsSendingDigest(true);
     toast.info("Sending daily digest...", { description: "This may take up to 60 seconds" });
     try {
-      const { data, error } = await supabase.functions.invoke("daily-digest");
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) throw new Error("No active session — please sign in again.");
+      const { data, error } = await supabase.functions.invoke("daily-digest", {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
       if (error) throw error;
       if (data?.success) {
         toast.success("Daily digest sent successfully");
