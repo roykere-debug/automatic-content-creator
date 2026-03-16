@@ -1,7 +1,9 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { openCorsHeaders } from "../_shared/cors.ts";
 import { verifyAdminAccess, getUserWorkspaceId } from "../_shared/auth.ts";
 import { loadWorkspaceSettings } from "../_shared/workspace-loader.ts";
+import { getVaultSecret } from "../_shared/vault.ts";
 
 /**
  * Generalized article generation edge function.
@@ -113,6 +115,16 @@ serve(async (req: Request): Promise<Response> => {
     const { error: authError, userId } = await verifyAdminAccess(req, openCorsHeaders);
     if (authError || !userId) return authError!;
 
+    const serviceClient = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
+    const [aiApiKey, aiGatewayUrl, aiModel] = await Promise.all([
+      getVaultSecret("AI_API_KEY", serviceClient),
+      getVaultSecret("AI_GATEWAY_URL", serviceClient),
+      getVaultSecret("AI_MODEL", serviceClient),
+    ]);
+
     // Get workspace
     const body = await req.json();
     const workspaceId = body.workspace_id || (await getUserWorkspaceId(userId));
@@ -140,10 +152,10 @@ serve(async (req: Request): Promise<Response> => {
       );
     }
 
-    // Get AI config from environment
-    const aiGatewayUrl = Deno.env.get("AI_GATEWAY_URL") || "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
-    const aiApiKey = Deno.env.get("AI_API_KEY") || Deno.env.get("LOVABLE_API_KEY");
-    if (!aiApiKey) {
+    // Get AI config (vault takes priority over env)
+    const effectiveAiGatewayUrl = aiGatewayUrl || "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
+    const effectiveAiApiKey = aiApiKey || Deno.env.get("LOVABLE_API_KEY");
+    if (!effectiveAiApiKey) {
       throw new Error("No AI API key configured");
     }
 
@@ -221,14 +233,14 @@ Instructions:
     );
 
     // Call AI
-    const response = await fetch(aiGatewayUrl, {
+    const response = await fetch(effectiveAiGatewayUrl, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${aiApiKey}`,
+        Authorization: `Bearer ${effectiveAiApiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: Deno.env.get("AI_MODEL") ?? "gemini-2.5-pro",
+        model: aiModel ?? "gemini-2.5-pro",
         messages: [
           { role: "system", content: settings.system_prompt },
           { role: "user", content: userPrompt },

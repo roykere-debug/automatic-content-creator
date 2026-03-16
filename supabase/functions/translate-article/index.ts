@@ -1,8 +1,10 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 import { openCorsHeaders } from "../_shared/cors.ts";
 import { verifyAdminAccess, getUserWorkspaceId } from "../_shared/auth.ts";
 import { loadWorkspaceSettings } from "../_shared/workspace-loader.ts";
+import { getVaultSecret } from "../_shared/vault.ts";
 
 /**
  * Generalized article translation function.
@@ -26,6 +28,16 @@ serve(async (req: Request): Promise<Response> => {
   try {
     const { error: authError, userId } = await verifyAdminAccess(req, openCorsHeaders);
     if (authError || !userId) return authError!;
+
+    const serviceClient = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
+    const [aiApiKey, aiGatewayUrl, aiModel] = await Promise.all([
+      getVaultSecret("AI_API_KEY", serviceClient),
+      getVaultSecret("AI_GATEWAY_URL", serviceClient),
+      getVaultSecret("AI_MODEL", serviceClient),
+    ]);
 
     const body = await req.json();
     const parseResult = RequestSchema.safeParse(body);
@@ -81,9 +93,9 @@ Every fact must be traceable to the original source.`;
 
     console.log(`[translate-article] Processing: ${title.substring(0, 50)}`);
 
-    const aiGatewayUrl = Deno.env.get("AI_GATEWAY_URL") || "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
-    const aiApiKey = Deno.env.get("AI_API_KEY") || Deno.env.get("LOVABLE_API_KEY");
-    if (!aiApiKey) throw new Error("AI API key not configured");
+    const effectiveAiGatewayUrl = aiGatewayUrl || "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
+    const effectiveAiApiKey = aiApiKey || Deno.env.get("LOVABLE_API_KEY");
+    if (!effectiveAiApiKey) throw new Error("AI API key not configured");
 
     const userPrompt = `INPUT DATA:
 Original Title: ${title}
@@ -93,14 +105,14 @@ URL: ${url}
 
 Write two professional articles following the instructions.`;
 
-    const response = await fetch(aiGatewayUrl, {
+    const response = await fetch(effectiveAiGatewayUrl, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${aiApiKey}`,
+        Authorization: `Bearer ${effectiveAiApiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: Deno.env.get("AI_MODEL") ?? "gemini-2.5-flash",
+        model: aiModel ?? "gemini-2.5-flash",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
