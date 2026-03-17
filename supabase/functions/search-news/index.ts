@@ -1,8 +1,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 import { openCorsHeaders } from "../_shared/cors.ts";
 import { verifyAdminAccess, getUserWorkspaceId } from "../_shared/auth.ts";
 import { loadWorkspaceSettings } from "../_shared/workspace-loader.ts";
+import { getVaultSecret } from "../_shared/vault.ts";
 
 /**
  * Generalized news search edge function.
@@ -80,7 +82,11 @@ serve(async (req: Request): Promise<Response> => {
     // Use workspace's default search query if no query provided
     const searchQuery = parsed.query || settings.default_search_query || settings.industry_vertical;
 
-    const TAVILY_API_KEY = Deno.env.get("TAVILY_API_KEY");
+    const serviceClient = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
+    const TAVILY_API_KEY = await getVaultSecret("TAVILY_API_KEY", serviceClient);
     if (!TAVILY_API_KEY) {
       throw new Error("TAVILY_API_KEY not configured");
     }

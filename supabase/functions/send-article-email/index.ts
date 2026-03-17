@@ -1,12 +1,12 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { openCorsHeaders } from "../_shared/cors.ts";
 import { verifyAdminAccess, getUserWorkspaceId } from "../_shared/auth.ts";
 import { loadWorkspaceSettings } from "../_shared/workspace-loader.ts";
 import { buildArticleEmailHtml } from "../../../packages/core/src/templates/email-article.ts";
-
-const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
+import { getVaultSecret } from "../_shared/vault.ts";
 
 const ArticleSchema = z.object({
   title: z.string().min(1).max(500),
@@ -39,6 +39,19 @@ serve(async (req) => {
 
   const { error: authError, userId } = await verifyAdminAccess(req, openCorsHeaders);
   if (authError) return authError;
+
+  const serviceClient = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+  );
+  const resendApiKey = await getVaultSecret("RESEND_API_KEY", serviceClient);
+  if (!resendApiKey) {
+    return new Response(
+      JSON.stringify({ success: false, error: "RESEND_API_KEY not configured in Vault" }),
+      { status: 500, headers: { ...openCorsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+  const resend = new Resend(resendApiKey);
 
   let body: unknown;
   try {

@@ -56,9 +56,17 @@ export async function loadWorkspaceSettings(workspaceId: string): Promise<Worksp
     return cached.data;
   }
 
+  const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+  const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+      console.error("loadWorkspaceSettings: Missing environment variables");
+      return null;
+  }
+
   const supabase = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    SUPABASE_URL,
+    SUPABASE_SERVICE_ROLE_KEY
   );
 
   const { data, error } = await supabase
@@ -120,9 +128,17 @@ export async function loadWorkspaceSettings(workspaceId: string): Promise<Worksp
  * Used by public chatbot functions that don't receive workspace_id explicitly.
  */
 export async function resolveWorkspaceByOrigin(origin: string): Promise<WorkspaceSettings | null> {
+  const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+  const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+      console.error("resolveWorkspaceByOrigin: Missing environment variables");
+      return null;
+  }
+
   const supabase = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    SUPABASE_URL,
+    SUPABASE_SERVICE_ROLE_KEY
   );
 
   // Use the DB function for efficient lookup
@@ -152,9 +168,17 @@ export async function resolveWorkspaceByOrigin(origin: string): Promise<Workspac
  * Get the default workspace ID (for backwards compatibility).
  */
 export async function getDefaultWorkspaceId(): Promise<string | null> {
+  const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+  const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+      console.error("getDefaultWorkspaceId: Missing environment variables");
+      return null;
+  }
+
   const supabase = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    SUPABASE_URL,
+    SUPABASE_SERVICE_ROLE_KEY
   );
 
   const { data } = await supabase

@@ -686,53 +686,67 @@ export default function Onboarding() {
     setIsSaving(true);
     try {
       // Explicitly get session token just like we do in WorkspaceContext
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       if (!session?.access_token) {
+        console.error("Onboarding: No active session", sessionError);
         throw new Error("No active session. Please sign in again.");
       }
 
-      // All workspace_settings writes go through the edge function (service-role only table)
-      const { data, error } = await supabase.functions.invoke("get-workspace-id", {
-        body: {
-          action: "update",
-          // workspaceId is optional — the function resolves it if not provided
-          ...(workspaceId && { workspaceId }),
-          settings: {
-            brand_name: brandName || "AutoPilot Content",
-            brand_tagline: brandTagline || "Content Intelligence",
-            industry_vertical: industry,
-            scan_keywords: keywords,
-            primary_language: primaryLanguage,
-            bilingual_mode: bilingualMode,
-            supported_languages: bilingualMode
-              ? [...new Set([primaryLanguage, primaryLanguage === "he" ? "en" : "he"])]
-              : [primaryLanguage],
-            ...(senderName && { email_sender_name: senderName }),
-            ...(fromAddress && { email_from_address: fromAddress }),
-          },
+    // All workspace_settings writes go through the edge function (service-role only table)
+    const { data, error } = await supabase.functions.invoke("get-workspace-id", {
+      body: {
+        action: "update",
+        // workspaceId is optional — the function resolves it if not provided
+        ...(workspaceId && { workspaceId }),
+        settings: {
+          brand_name: brandName || "AutoPilot Content",
+          brand_tagline: brandTagline || "Content Intelligence",
+          industry_vertical: industry,
+          scan_keywords: keywords,
+          primary_language: primaryLanguage,
+          bilingual_mode: bilingualMode,
+          supported_languages: bilingualMode
+            ? [...new Set([primaryLanguage, primaryLanguage === "he" ? "en" : "he"])]
+            : [primaryLanguage],
+          ...(senderName && { email_sender_name: senderName }),
+          ...(fromAddress && { email_from_address: fromAddress }),
         },
-        headers: { Authorization: `Bearer ${session.access_token}` },
-      });
+      },
+      headers: { Authorization: `Bearer ${session.access_token}` },
+    });
 
       if (error) {
-        // Extract the real error message from the edge function response body
-        // (supabase-js wraps it as "Edge Function returned a non-2xx status code")
-        let detail = "Edge Function returned a non-2xx status code";
+        // Try to read actual error message from the response body
+        let realErrorMessage = "Failed to save settings";
         try {
-          const body = await (error as { context?: Response }).context?.json?.();
-          if (body?.error) detail = body.error;
-        } catch { /* ignore parse errors */ }
-        throw new Error(detail);
-      }
-      if (!data?.success) throw new Error(data?.error ?? "Save failed");
+          if ((error as any).context && typeof (error as any).context.clone === 'function') {
+            const errorBody = await (error as any).context.clone().json();
+            if (errorBody?.error) realErrorMessage = errorBody.error;
+            else if (errorBody?.message) realErrorMessage = errorBody.message;
+          } else if ((error as any).message) {
+            realErrorMessage = (error as any).message;
+          }
+        } catch (_) { /* ignore parse errors */ }
 
+        throw new Error(realErrorMessage);
+      }
+
+      // Check for application-level errors (edge function returns 200 with error body)
+      if (data?.error) {
+        throw new Error(data.error);
+      }
+
+      // Success — reload workspace config and navigate to dashboard
       await refetch();
-      toast.success("Workspace configured! Welcome aboard.");
       navigate("/");
     } catch (err) {
       console.error("Onboarding save error:", err);
+      let errorDesc = err instanceof Error ? err.message : String(err);
+      if (errorDesc === 'Failed to fetch' || errorDesc.includes('CORS') || errorDesc.includes('Edge Function returned a non-2xx status code')) {
+          errorDesc = "Network error. The Edge Function couldn't be reached or returned an invalid token (401). Try signing out and signing in again.";
+      }
       toast.error("Failed to save settings", {
-        description: err instanceof Error ? err.message : "Unknown error",
+        description: errorDesc,
       });
     } finally {
       setIsSaving(false);

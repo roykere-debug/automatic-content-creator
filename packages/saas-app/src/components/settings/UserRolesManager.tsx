@@ -41,13 +41,14 @@ export function UserRolesManager() {
       setError(null);
       
       const { data: sessionData } = await supabase.auth.getSession();
-      if (!sessionData.session) {
+      if (!sessionData.session?.access_token) {
         setError("Not authenticated");
         return;
       }
 
       const response = await supabase.functions.invoke('manage-user-roles', {
         body: { action: 'list' },
+        headers: { Authorization: `Bearer ${sessionData.session.access_token}` },
       });
 
       if (response.error) {
@@ -81,9 +82,13 @@ export function UserRolesManager() {
 
     try {
       setIsAdding(true);
-      
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) { toast.error("Not authenticated"); setIsAdding(false); return; }
+
       const response = await supabase.functions.invoke('manage-user-roles', {
         body: { action: 'add', email: newEmail.trim() },
+        headers: { Authorization: `Bearer ${session.access_token}` },
       });
 
       if (response.data?.success) {
@@ -107,9 +112,13 @@ export function UserRolesManager() {
   const handleRemoveAdmin = async (userId: string, email: string) => {
     try {
       setRemovingId(userId);
-      
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) { toast.error("Not authenticated"); setRemovingId(null); return; }
+
       const response = await supabase.functions.invoke('manage-user-roles', {
         body: { action: 'remove', user_id: userId },
+        headers: { Authorization: `Bearer ${session.access_token}` },
       });
 
       if (response.error) {

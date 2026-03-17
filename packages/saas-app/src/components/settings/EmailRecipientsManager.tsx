@@ -23,8 +23,12 @@ export function EmailRecipientsManager() {
   const [isAdding, setIsAdding] = useState(false);
 
   const fetchRecipients = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) { setIsLoading(false); return; }
+
     const { data, error } = await supabase.functions.invoke('manage-recipients', {
-      body: { action: 'list' }
+      body: { action: 'list' },
+      headers: { Authorization: `Bearer ${session.access_token}` },
     });
 
     if (error || !data?.success) {
@@ -54,12 +58,16 @@ export function EmailRecipientsManager() {
     }
 
     setIsAdding(true);
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) { toast.error("Not authenticated"); setIsAdding(false); return; }
+
     const { data, error } = await supabase.functions.invoke('manage-recipients', {
-      body: { 
+      body: {
         action: 'add',
         email: newEmail.trim(),
         name: newName.trim() || null,
-      }
+      },
+      headers: { Authorization: `Bearer ${session.access_token}` },
     });
 
     if (error || !data?.success) {
@@ -75,12 +83,16 @@ export function EmailRecipientsManager() {
   };
 
   const handleToggle = async (id: string, isActive: boolean) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) return;
+
     const { data, error } = await supabase.functions.invoke('manage-recipients', {
-      body: { 
+      body: {
         action: 'toggle',
         id,
         is_active: !isActive,
-      }
+      },
+      headers: { Authorization: `Bearer ${session.access_token}` },
     });
 
     if (error || !data?.success) {
@@ -94,11 +106,15 @@ export function EmailRecipientsManager() {
   };
 
   const handleDelete = async (id: string) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) return;
+
     const { data, error } = await supabase.functions.invoke('manage-recipients', {
-      body: { 
+      body: {
         action: 'delete',
         id,
-      }
+      },
+      headers: { Authorization: `Bearer ${session.access_token}` },
     });
 
     if (error || !data?.success) {

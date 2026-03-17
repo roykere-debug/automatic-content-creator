@@ -53,8 +53,12 @@ export default function Settings() {
     if (!workspaceId) return;
     const load = async () => {
       try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) return;
+
         const { data, error } = await supabase.functions.invoke("get-workspace-id", {
           body: { action: "get" },
+          headers: { Authorization: `Bearer ${session.access_token}` },
         });
         if (error || !data?.settings) return;
         const s = data.settings;
@@ -96,6 +100,9 @@ export default function Settings() {
       try { rssFeeds = JSON.parse(rssFeedsJson); }
       catch { toast.error("Invalid RSS feeds JSON"); setSaving(false); return; }
 
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) { toast.error("Not authenticated"); setSaving(false); return; }
+
       const { data, error } = await supabase.functions.invoke("get-workspace-id", {
         body: {
           action: "update",
@@ -113,6 +120,7 @@ export default function Settings() {
             wordpress_url: wordpressUrl || null, wordpress_username: wordpressUsername || null,
           },
         },
+        headers: { Authorization: `Bearer ${session.access_token}` },
       });
       if (error) throw error;
       if (!data?.success) throw new Error(data?.error ?? "Save failed");

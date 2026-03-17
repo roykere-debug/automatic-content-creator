@@ -30,12 +30,45 @@ export default function Dashboard() {
     setIsScanning(true);
     toast.info("Starting scan...", { description: "Searching for new articles..." });
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) throw new Error("No active session — please sign in again.");
+      const authHeader = { Authorization: `Bearer ${session.access_token}` };
+
       const query = getScanQuery();
       const { data, error } = await supabase.functions.invoke("search-news", {
         body: { query, maxResults: 20 },
+        headers: authHeader,
       });
       if (error) throw error;
-      const count = data?.articles?.length ?? 0;
+      const articles: Array<{ title: string; url: string; image?: string; source?: string }> = data?.articles ?? [];
+      const count = articles.length;
+
+      // Save new articles to article_drafts as leads (deduplicate against existing)
+      if (count > 0 && session.user?.id) {
+        const { data: existing } = await supabase
+          .from("article_drafts")
+          .select("source_url");
+        const knownUrls = new Set((existing ?? []).map((d: { source_url: string }) => d.source_url));
+        const newLeads = articles.filter((a) => a.url && !knownUrls.has(a.url));
+        if (newLeads.length > 0) {
+          const { error: insertError } = await supabase.from("article_drafts").insert(
+            newLeads.map((a) => ({
+              user_id: session.user.id,
+              source_url: a.url,
+              source_title: a.title,
+              source_image: a.image ?? null,
+              source_name: a.source ?? null,
+              status: "lead",
+            }))
+          );
+          if (insertError) {
+            console.error("Failed to save articles:", insertError.message);
+            toast.warning("Articles found but could not be saved", { description: insertError.message });
+          }
+          setRefreshTrigger((prev) => prev + 1);
+        }
+      }
+
       setLastScan(new Date());
       setLogs((prev) => [
         {
@@ -43,7 +76,7 @@ export default function Dashboard() {
           type: "scan" as const,
           message: `Found ${count} article${count !== 1 ? "s" : ""} for "${query}"`,
           timestamp: new Date(),
-          details: data?.articles?.map((a: { title: string }) => a.title).join(", ") ?? "",
+          details: articles.map((a) => a.title).join(", "),
         },
         ...prev,
       ]);
@@ -52,13 +85,16 @@ export default function Dashboard() {
       console.error("Scan error:", err);
       // Try to extract the real error body from the edge function response
       let msg = err instanceof Error ? err.message : "Unknown error";
+      let body: any = null;
       try {
         const ctx = (err as { context?: Response }).context;
         if (ctx) {
-          const body = await ctx.clone().json();
+          body = await ctx.clone().json();
           msg = body?.error ?? body?.message ?? msg;
         }
       } catch { /* ignore body parse failure */ }
+
+      console.error("Scan error:", msg);
 
       let description = msg;
       if (msg.includes("TAVILY_API_KEY") || msg.includes("tavily")) description = "Add TAVILY_API_KEY to Supabase Vault secrets";
@@ -74,9 +110,14 @@ export default function Dashboard() {
     setIsSendingEmail(true);
     toast.info("Searching for a new article...");
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) throw new Error("No active session — please sign in again.");
+      const authHeader = { Authorization: `Bearer ${session.access_token}` };
+
       // 1. Get active recipients
       const { data: recipientsData, error: recipientsError } = await supabase.functions.invoke("manage-recipients", {
         body: { action: "list_active" },
+        headers: authHeader,
       });
       if (recipientsError) throw new Error(`Recipients error: ${recipientsError.message}`);
       const activeRecipients = recipientsData?.data || [];
@@ -88,7 +129,7 @@ export default function Dashboard() {
       }
 
       // 2. Get already-sent URLs to avoid duplicates
-      const { data: sentData } = await supabase.functions.invoke("manage-articles", { body: { action: "get_sent_urls" } });
+      const { data: sentData } = await supabase.functions.invoke("manage-articles", { body: { action: "get_sent_urls" }, headers: authHeader });
       const sentArticles = sentData?.data || [];
       const sentUrls = new Set(sentArticles.map((a: { article_url: string }) => a.article_url));
       const usedImageUrls = new Set(sentArticles.map((a: { image_url: string | null }) => a.image_url).filter(Boolean));
@@ -100,6 +141,7 @@ export default function Dashboard() {
         const query = getScanQuery();
         const { data: searchData, error: searchError } = await supabase.functions.invoke("search-news", {
           body: { query, maxResults: 10, usedImageUrls: Array.from(usedImageUrls) },
+          headers: authHeader,
         });
         if (searchError) {
           const msg = searchError.message || "";
@@ -123,6 +165,7 @@ export default function Dashboard() {
       toast.info("Generating article content...");
       const { data: articleData, error: articleError } = await supabase.functions.invoke("translate-article", {
         body: { title: newArticle.title, content: newArticle.content, url: newArticle.url, source: newArticle.source },
+        headers: authHeader,
       });
       if (articleError) {
         const msg = articleError.message || "";
@@ -148,6 +191,7 @@ export default function Dashboard() {
             secondaryArticle: bilingual ? { title: secondaryArticle.title, content: secondaryArticle.content } : undefined,
             sendBothLanguages: bilingual,
           },
+          headers: authHeader,
         });
         if (error) console.error(`Email error for ${email}:`, error);
         return { email, success: !error && data?.success };
@@ -155,9 +199,31 @@ export default function Dashboard() {
 
       const results = await Promise.all(sendPromises);
       const successCount = results.filter((r) => r.success).length;
+      const successEmails = results.filter((r) => r.success).map((r) => r.email);
+
       if (successCount === 0) {
-        toast.error("All emails failed", { description: "Check that RESEND_API_KEY is set in Edge Function Secrets" });
+        toast.error("All emails failed", { description: "Check that RESEND_API_KEY is set in Supabase Vault" });
       } else {
+        // Record in sent_articles so it shows up in the dashboard table
+        await supabase.functions.invoke("manage-articles", {
+          body: {
+            action: "add",
+            article_url: newArticle.url,
+            article_title: primaryArticle.title,
+            keyword_used: getScanQuery(),
+            email_sent_to: successEmails.join(", "),
+            image_url: newArticle.image ?? null,
+          },
+          headers: authHeader,
+        });
+
+        // Update the lead status in article_drafts if this article was a saved lead
+        await supabase
+          .from("article_drafts")
+          .update({ status: "draft" })
+          .eq("source_url", newArticle.url)
+          .eq("status", "lead");
+
         toast.success(`Sent to ${successCount}/${recipientEmails.length} recipients`);
         setRefreshTrigger((prev) => prev + 1);
       }
@@ -173,7 +239,11 @@ export default function Dashboard() {
     setIsSendingDigest(true);
     toast.info("Sending daily digest...", { description: "This may take up to 60 seconds" });
     try {
-      const { data, error } = await supabase.functions.invoke("daily-digest");
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) throw new Error("No active session — please sign in again.");
+      const { data, error } = await supabase.functions.invoke("daily-digest", {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
       if (error) throw error;
       if (data?.success) {
         toast.success("Daily digest sent successfully");

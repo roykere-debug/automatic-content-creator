@@ -94,7 +94,8 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       // Explicitly get the session token and pass it in the request header.
       // Relying on functions.invoke to auto-attach the token causes a race
       // condition — the session may not be committed to the client yet.
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
       if (!session?.access_token) {
         setIsLoading(false);
         return;
@@ -107,20 +108,31 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       });
 
       if (fnError) {
-        console.error("get-workspace-id error:", JSON.stringify(fnError), fnError);
+        console.error("get-workspace-id error:", fnError);
+
         const status = (fnError as { context?: { status?: number } }).context?.status;
-        // 401/403 — token issue or missing role. Use default config so the user
-        // isn't stuck in a sign-out loop. They'll see default branding.
-        if (status === 401 || status === 403) {
-          // Session mismatch — use default config and let user stay logged in.
-          // They will get proper workspace config once Vercel deploys with the
-          // correct Supabase credentials and they sign in fresh.
-          console.warn(`Workspace load returned ${status} — using default config.`);
-          setIsLoading(false);
-          return;
+
+        // Try to extract the actual error message from the response body
+        let errorDetail = fnError.message || "Unknown error";
+        try {
+          if ((fnError as any)?.context && typeof (fnError as any).context.clone === 'function') {
+            const body = await (fnError as any).context.clone().json();
+            if (body?.error) errorDetail = body.error;
+          }
+        } catch (_) { /* ignore parse errors */ }
+
+        if (String(fnError).includes('Failed to fetch')) {
+          setError("Cannot reach the server. Please check your connection and try again.");
+        } else {
+          setError(`Failed to load workspace: ${errorDetail} (HTTP ${status ?? "?"})`);
         }
-        const errorMsg = `Failed to load workspace: ${fnError.message || "Unknown error"} (HTTP ${status ?? "?"})`;
-        setError(errorMsg);
+        setIsLoading(false);
+        return;
+      }
+
+      // Check for application-level errors (edge function returns 200 with error body)
+      if (data?.error) {
+        setError(`Failed to load workspace: ${data.error}`);
         setIsLoading(false);
         return;
       }
@@ -177,8 +189,10 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     fetchWorkspaceConfig();
   }, [fetchWorkspaceConfig]);
 
-  // Onboarding needed if: no workspace exists yet, OR workspace has no scan keywords configured
-  const isOnboardingNeeded = user !== null && !isLoading && (workspaceId === null || config.scan_keywords.length === 0);
+  // Onboarding needed only when no workspace exists yet.
+  // Do NOT gate on scan_keywords — if settings fail to load temporarily,
+  // that would falsely trigger re-onboarding and create duplicate workspaces.
+  const isOnboardingNeeded = user !== null && !isLoading && workspaceId === null;
 
   return (
     <WorkspaceContext.Provider

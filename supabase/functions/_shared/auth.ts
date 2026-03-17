@@ -20,9 +20,24 @@ export async function verifyAdminAccess(
   }
 
   const token = authHeader.replace("Bearer ", "");
+  
+  const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+  const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+     console.error("verifyAdminAccess: Missing environment variables");
+     return {
+        error: new Response(
+          JSON.stringify({ success: false, error: "Server configuration error" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        ),
+        userId: null,
+     }
+  }
+
   const serviceClient = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    SUPABASE_URL,
+    SUPABASE_SERVICE_ROLE_KEY
   );
 
   const { data: { user }, error: userError } = await serviceClient.auth.getUser(token);
@@ -66,9 +81,17 @@ export async function verifyAdminAccess(
  * who haven't been explicitly linked via workspace_users yet).
  */
 export async function getUserWorkspaceId(userId: string): Promise<string | null> {
+  const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+  const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+    console.error("getUserWorkspaceId: Missing environment variables");
+    return null;
+  }
+
   const supabase = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    SUPABASE_URL,
+    SUPABASE_SERVICE_ROLE_KEY
   );
 
   // 1. Direct link via workspace_users

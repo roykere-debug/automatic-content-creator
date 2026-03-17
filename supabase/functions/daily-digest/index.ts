@@ -26,6 +26,7 @@ import { parseFeed } from "https://deno.land/x/rss@1.0.0/mod.ts";
 import { openCorsHeaders } from "../_shared/cors.ts";
 import { verifyAdminAccess, getUserWorkspaceId } from "../_shared/auth.ts";
 import { loadWorkspaceSettings, getDefaultWorkspaceId, type WorkspaceSettings } from "../_shared/workspace-loader.ts";
+import { getVaultSecret } from "../_shared/vault.ts";
 
 // ============================================================
 // UNIVERSAL CONSTANTS (apply to all workspaces)
@@ -245,10 +246,13 @@ function buildDigestEmailHtml(
 
 async function generateTitles(
   entries: RssEntry[],
-  settings: WorkspaceSettings
+  settings: WorkspaceSettings,
+  aiApiKey?: string,
+  aiGatewayUrl?: string,
+  aiModel?: string
 ): Promise<DigestArticle[]> {
-  const aiGatewayUrl = Deno.env.get("AI_GATEWAY_URL") || "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
-  const aiApiKey = Deno.env.get("AI_API_KEY") || Deno.env.get("LOVABLE_API_KEY");
+  const effectiveAiGatewayUrl = aiGatewayUrl || "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
+  const effectiveAiApiKey = aiApiKey || Deno.env.get("LOVABLE_API_KEY");
 
   const primary = settings.primary_language || "en";
   const secondary = settings.supported_languages?.[1] || "he";
@@ -260,7 +264,7 @@ async function generateTitles(
       "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=600&h=400&fit=crop",
     ];
 
-    if (!aiApiKey) {
+    if (!effectiveAiApiKey) {
       // Fallback: use original title without AI
       articles.push({
         primaryTitle: entry.title,
@@ -274,11 +278,11 @@ async function generateTitles(
     }
 
     try {
-      const response = await fetch(aiGatewayUrl, {
+      const response = await fetch(effectiveAiGatewayUrl, {
         method: "POST",
-        headers: { Authorization: `Bearer ${aiApiKey}`, "Content-Type": "application/json" },
+        headers: { Authorization: `Bearer ${effectiveAiApiKey}`, "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: Deno.env.get("AI_MODEL") ?? "gemini-2.5-flash",
+          model: aiModel ?? "gemini-2.5-flash",
           messages: [
             {
               role: "system",
@@ -421,6 +425,14 @@ async function runDigestForWorkspace(workspaceId: string, settings: WorkspaceSet
 
   const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
+  // Read API keys from Vault
+  const [aiApiKey, aiGatewayUrl, aiModel, resendApiKey] = await Promise.all([
+    getVaultSecret("AI_API_KEY", supabase),
+    getVaultSecret("AI_GATEWAY_URL", supabase),
+    getVaultSecret("AI_MODEL", supabase),
+    getVaultSecret("RESEND_API_KEY", supabase),
+  ]);
+
   // 1. Parse RSS feeds (using workspace config)
   const entries = await parseRssFeeds(settings);
   console.log(`[daily-digest] ${entries.length} scored articles from RSS feeds`);
@@ -445,7 +457,7 @@ async function runDigestForWorkspace(workspaceId: string, settings: WorkspaceSet
   }
 
   // 3. Generate bilingual titles
-  const digestArticles = await generateTitles(newEntries, settings);
+  const digestArticles = await generateTitles(newEntries, settings, aiApiKey, aiGatewayUrl, aiModel);
   console.log(`[daily-digest] Generated titles for ${digestArticles.length} articles`);
 
   // 4. Get email recipients for this workspace
@@ -463,7 +475,7 @@ async function runDigestForWorkspace(workspaceId: string, settings: WorkspaceSet
   }
 
   // 5. Send emails (workspace-branded template)
-  const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
+  const resend = new Resend(resendApiKey || Deno.env.get("RESEND_API_KEY"));
   const primaryLang = (settings.primary_language as "he" | "en") || "en";
   const emailHtml = buildDigestEmailHtml(digestArticles, settings, primaryLang);
   const emailSubject = primaryLang === "he"

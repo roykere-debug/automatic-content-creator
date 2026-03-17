@@ -73,8 +73,10 @@ export default function ArticleGenerator() {
   const checkDuplicateInWordPress = async (url: string) => {
     setIsCheckingDuplicate(true);
     try {
+      const { data: { session } } = await supabase.auth.getSession();
       const { data, error } = await supabase.functions.invoke("check-wordpress-posts", {
         body: { action: "check_url", url },
+        headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined,
       });
 
       if (error) {
@@ -159,12 +161,16 @@ export default function ArticleGenerator() {
 
     setIsGenerating(true);
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) throw new Error("No active session — please sign in again.");
+      const authHeader = { Authorization: `Bearer ${session.access_token}` };
+
       const body: any = {
         url: articleUrl,
         title: articleTitle,
         source: articleSource,
       };
-      
+
       // If there are correction notes, include them and the current article for context
       if (correctionNotes.trim() && generatedArticles) {
         body.correctionNotes = correctionNotes.trim();
@@ -180,6 +186,7 @@ export default function ArticleGenerator() {
 
       const { data, error } = await supabase.functions.invoke("generate-article", {
         body,
+        headers: authHeader,
       });
 
       if (error) throw error;
@@ -286,6 +293,8 @@ export default function ArticleGenerator() {
 
     setIsPublishing(true);
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) throw new Error("No active session — please sign in again.");
       const { data, error } = await supabase.functions.invoke("publish-to-wordpress", {
         body: {
           title: currentArticle.title,
@@ -300,6 +309,7 @@ export default function ArticleGenerator() {
           unsplashPhotoUrl,
           photographerName,
         },
+        headers: { Authorization: `Bearer ${session.access_token}` },
       });
 
       if (error) throw error;

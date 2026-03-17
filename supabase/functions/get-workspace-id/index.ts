@@ -4,13 +4,14 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const openCorsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Methods": "POST, GET, OPTIONS, PUT, DELETE",
 };
 
 /** Verify the request has a valid auth token. Returns userId or an error Response. */
 async function verifyAuth(req: Request): Promise<{ userId: string | null; isAdmin: boolean; error: Response | null }> {
   const authHeader = req.headers.get("Authorization");
   if (!authHeader?.startsWith("Bearer ")) {
+    console.error("verifyAuth: missing or invalid Authorization header");
     return {
       userId: null,
       isAdmin: false,
@@ -22,13 +23,39 @@ async function verifyAuth(req: Request): Promise<{ userId: string | null; isAdmi
   }
 
   const token = authHeader.replace("Bearer ", "");
+  const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "https://zupjozuwworhbwaujplu.supabase.co";
+  const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? Deno.env.get("SUPABASE_ANON_KEY");
+
+  // Debug missing env vars safely
+  console.log("Environment state:", { 
+    hasUrl: !!Deno.env.get("SUPABASE_URL"), 
+    hasRoleKey: !!Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"),
+    hasAnonKey: !!Deno.env.get("SUPABASE_ANON_KEY")
+  });
+
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+     console.error("verifyAuth: Missing environment variables", {
+       hasUrl: !!SUPABASE_URL,
+       hasKey: !!SUPABASE_SERVICE_ROLE_KEY
+     });
+     return {
+        userId: null,
+        isAdmin: false,
+        error: new Response(JSON.stringify({ error: "Server configuration error" }), {
+            status: 500,
+            headers: { ...openCorsHeaders, "Content-Type": "application/json" },
+        })
+     }
+  }
+
   const serviceClient = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    SUPABASE_URL,
+    SUPABASE_SERVICE_ROLE_KEY
   );
 
   const { data: { user }, error } = await serviceClient.auth.getUser(token);
   if (error || !user) {
+    console.error("verifyAuth: getUser error", error);
     return {
       userId: null,
       isAdmin: false,
@@ -106,39 +133,72 @@ serve(async (req) => {
       headers: { ...openCorsHeaders, "Content-Type": "application/json" },
     });
 
-  const { userId, error: authError } = await verifyAuth(req);
-  if (authError) return authError;
+  try {
+    const { userId, error: authError } = await verifyAuth(req);
+    if (authError) {
+      console.error("verifyAuth failed:", authError);
+      return authError;
+    }
+
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "https://zupjozuwworhbwaujplu.supabase.co";
+    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? Deno.env.get("SUPABASE_ANON_KEY");
+
+  // Debug missing env vars safely
+  console.log("Environment state:", { 
+    hasUrl: !!Deno.env.get("SUPABASE_URL"), 
+    hasRoleKey: !!Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"),
+    hasAnonKey: !!Deno.env.get("SUPABASE_ANON_KEY")
+  });
+
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+     console.error("Missing environment variables in get-workspace-id", {
+       hasUrl: !!SUPABASE_URL,
+       hasKey: !!SUPABASE_SERVICE_ROLE_KEY
+     });
+     return json({ error: "Server configuration error: missing env vars" }, 500);
+  }
 
   const serviceClient = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    SUPABASE_URL,
+    SUPABASE_SERVICE_ROLE_KEY
   );
 
   let body: { action?: string; workspaceId?: string; settings?: Record<string, unknown> } = {};
-  try {
-    body = await req.json();
-  } catch {
-    // no body is fine
+  if (req.method !== "GET" && req.method !== "HEAD") {
+    try {
+      const text = await req.text();
+      if (text) {
+         body = JSON.parse(text);
+      }
+    } catch (e) {
+      // no body is fine
+      console.log("Failed to parse body:", e);
+    }
   }
 
   const { action = "get", workspaceId: bodyWsId, settings } = body;
 
   // ── Resolve workspace ID ─────────────────────────────────────────────────────
   const resolveWorkspaceId = async (): Promise<string | null> => {
-    // 1. Try workspace_users for this user
+    // 1. Try workspace_users for this user — order by created_at DESC to always
+    //    return the most recently created workspace (avoids non-deterministic picks
+    //    when the user has multiple workspaces).
     const { data: wsUser } = await serviceClient
       .from("workspace_users")
       .select("workspace_id")
       .eq("user_id", userId!)
+      .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
 
     if (wsUser?.workspace_id) return wsUser.workspace_id;
 
-    // 2. Fallback: first available workspace (handles admin without workspace_users row)
+    // 2. Fallback: most recently updated workspace with settings (handles admin
+    //    without workspace_users row).
     const { data: ws } = await serviceClient
       .from("workspace_settings")
       .select("workspace_id")
+      .order("updated_at", { ascending: false })
       .limit(1)
       .maybeSingle();
 
@@ -154,7 +214,7 @@ serve(async (req) => {
       .from("workspace_settings")
       .select("*")
       .eq("workspace_id", workspaceId)
-      .single();
+      .maybeSingle();
 
     return json({ workspaceId, settings: wsSettings ?? null });
   }
@@ -187,4 +247,11 @@ serve(async (req) => {
   }
 
   return json({ error: `Unknown action: ${action}` }, 400);
+} catch (globalError) {
+  console.error("Global edge function error:", globalError);
+  return json({ 
+     error: "Internal Server Error", 
+     details: globalError instanceof Error ? globalError.message : String(globalError) 
+  }, 500);
+}
 });
