@@ -51,7 +51,7 @@ export default function Dashboard() {
         const knownUrls = new Set((existing ?? []).map((d: { source_url: string }) => d.source_url));
         const newLeads = articles.filter((a) => a.url && !knownUrls.has(a.url));
         if (newLeads.length > 0) {
-          await supabase.from("article_drafts").insert(
+          const { error: insertError } = await supabase.from("article_drafts").insert(
             newLeads.map((a) => ({
               user_id: session.user.id,
               source_url: a.url,
@@ -61,6 +61,10 @@ export default function Dashboard() {
               status: "lead",
             }))
           );
+          if (insertError) {
+            console.error("Failed to save articles:", insertError.message);
+            toast.warning("Articles found but could not be saved", { description: insertError.message });
+          }
           setRefreshTrigger((prev) => prev + 1);
         }
       }

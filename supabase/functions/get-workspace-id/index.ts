@@ -180,20 +180,25 @@ serve(async (req) => {
 
   // ── Resolve workspace ID ─────────────────────────────────────────────────────
   const resolveWorkspaceId = async (): Promise<string | null> => {
-    // 1. Try workspace_users for this user
+    // 1. Try workspace_users for this user — order by created_at DESC to always
+    //    return the most recently created workspace (avoids non-deterministic picks
+    //    when the user has multiple workspaces).
     const { data: wsUser } = await serviceClient
       .from("workspace_users")
       .select("workspace_id")
       .eq("user_id", userId!)
+      .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
 
     if (wsUser?.workspace_id) return wsUser.workspace_id;
 
-    // 2. Fallback: first available workspace (handles admin without workspace_users row)
+    // 2. Fallback: most recently updated workspace with settings (handles admin
+    //    without workspace_users row).
     const { data: ws } = await serviceClient
       .from("workspace_settings")
       .select("workspace_id")
+      .order("updated_at", { ascending: false })
       .limit(1)
       .maybeSingle();
 
@@ -209,7 +214,7 @@ serve(async (req) => {
       .from("workspace_settings")
       .select("*")
       .eq("workspace_id", workspaceId)
-      .single();
+      .maybeSingle();
 
     return json({ workspaceId, settings: wsSettings ?? null });
   }

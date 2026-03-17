@@ -189,8 +189,10 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     fetchWorkspaceConfig();
   }, [fetchWorkspaceConfig]);
 
-  // Onboarding needed if: no workspace exists yet, OR workspace has no scan keywords configured
-  const isOnboardingNeeded = user !== null && !isLoading && (workspaceId === null || config.scan_keywords.length === 0);
+  // Onboarding needed only when no workspace exists yet.
+  // Do NOT gate on scan_keywords — if settings fail to load temporarily,
+  // that would falsely trigger re-onboarding and create duplicate workspaces.
+  const isOnboardingNeeded = user !== null && !isLoading && workspaceId === null;
 
   return (
     <WorkspaceContext.Provider
